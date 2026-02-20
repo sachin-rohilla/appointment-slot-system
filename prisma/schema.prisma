@@ -11,7 +11,7 @@ model Slot {
   resource  String
   startTime DateTime
   endTime   DateTime
-  state     String   
+  state     String   @default("available")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   

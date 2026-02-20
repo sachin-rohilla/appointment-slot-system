@@ -11,10 +11,11 @@ export const errorMiddleware = (
   console.error("❌ Error:", {
     message: message,
     stack: err.stack,
+    status: statusCode,
   });
 
   res.status(statusCode).json({
     success: false,
-    message: `${statusCode === 500}` ? "Internal server error" : message,
+    message: statusCode === 500 ? "Internal server error" : message,
   });
 };
