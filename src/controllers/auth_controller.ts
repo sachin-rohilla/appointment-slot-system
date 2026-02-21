@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { signUpService } from "../services/auth_service";
+import { signInService, signUpService } from "../services/auth_service";
 export const signUpController = async (
   req: Request,
   res: Response,
@@ -18,12 +18,19 @@ export const signUpController = async (
   }
 };
 
-export const signInController = (
+export const signInController = async (
   req: Request,
   res: Response,
   next: NextFunction,
 ) => {
   try {
+    const { email, password } = req.body;
+    const result = await signInService({ email, password });
+    res.status(200).json({
+      success: true,
+      message: "User signed in successfully",
+      data: result,
+    });
   } catch (error) {
     next(error);
   }

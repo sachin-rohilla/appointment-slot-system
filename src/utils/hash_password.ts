@@ -10,3 +10,7 @@ if (!saltRounds || isNaN(saltRounds)) {
 export const generateHashPassword = async (password: string) => {
   return await bcrypt.hash(password, Number(SALT_ROUND));
 };
+
+export const verifyPassword = (password: string, hashedPassword: string) => {
+  return bcrypt.compare(password, hashedPassword);
+};
