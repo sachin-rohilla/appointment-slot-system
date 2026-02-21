@@ -6,13 +6,49 @@ datasource db {
   provider = "postgresql"
 }
 
+
+model User {
+  id        String    @id @default(uuid())
+  name      String
+  email     String    @unique
+  password  String
+
+  bookings  Booking[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
 model Slot {
-  id        String   @id @default(uuid())
+  id        String    @id @default(uuid())
   resource  String
   startTime DateTime
   endTime   DateTime
-  state     String   @default("available")
+  state     String    @default("available")
+
+  booking   Booking?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Booking {
+  id        String   @id @default(uuid())
+
+  userId    String
+  slotId    String   @unique
+
+  user      User     @relation(fields: [userId], references: [id])
+  slot      Slot     @relation(fields: [slotId], references: [id])
+
+  status    String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
 }
+
+
+
+
+
+

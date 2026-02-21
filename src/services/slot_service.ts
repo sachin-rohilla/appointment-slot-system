@@ -39,3 +39,7 @@ export const createSlotService = async ({
     },
   });
 };
+
+export const getAllSlotsService = () => {
+  return prisma.slot.findMany();
+};
