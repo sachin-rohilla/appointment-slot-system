@@ -13,3 +13,13 @@ if (!JWT_SECRET || !JWT_EXPIRES_IN) {
 export const generateAccessToken = (userId: string, role: string): string => {
   return jwt.sign({ userId, role }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 };
+
+export const verifyAccessToken = (
+  token: string,
+): { userId: string; role: string } => {
+  const decoded = jwt.verify(token, JWT_SECRET);
+  if (typeof decoded === "string") {
+    throw new Error("Invalid token format");
+  }
+  return decoded as { userId: string; role: string };
+};
