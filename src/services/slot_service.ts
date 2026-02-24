@@ -41,5 +41,36 @@ export const createSlotService = async ({
 };
 
 export const getAllSlotsService = () => {
-  return prisma.slot.findMany();
+  return prisma.slot.findMany({ where: { state: "available" } });
+};
+
+export const updateSlotService = async (userId: string, slotId: string) => {
+  const now = new Date();
+
+  const result = await prisma.slot.updateMany({
+    where: {
+      id: slotId,
+      endTime: { gt: now },
+      OR: [
+        { state: "available" },
+        {
+          state: "held",
+          heldUntil: { lt: now },
+        },
+      ],
+    },
+    data: {
+      state: "held",
+      heldByUserId: userId,
+      heldUntil: new Date(now.getTime() + 15 * 60 * 1000),
+    },
+  });
+
+  if (result.count === 0) {
+    throw new AppError("Slot not available", 400);
+  }
+
+  return prisma.slot.findUnique({
+    where: { id: slotId },
+  });
 };

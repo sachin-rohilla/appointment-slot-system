@@ -26,6 +26,8 @@ model Slot {
   startTime DateTime
   endTime   DateTime
   state     String    @default("available")
+  heldByUserId String?
+  heldUntil DateTime?
 
   booking   Booking?
 
