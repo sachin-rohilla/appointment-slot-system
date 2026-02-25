@@ -4,6 +4,7 @@ import {
   getAllSlotsService,
   updateSlotService,
 } from "../services/slot_service";
+import { AppError } from "../utils/app_error";
 
 export const createSlotController = async (
   req: Request,
@@ -50,7 +51,13 @@ export const updateSlotController = async (
   try {
     const { slotId } = req.params;
     const { userId } = (req as any).user;
-    const result = await updateSlotService(userId, slotId as string);
+    if (!slotId) {
+      throw new AppError("Slot ID is required", 400);
+    }
+    if (!userId) {
+      throw new AppError("User not found", 404);
+    }
+    await updateSlotService(userId, slotId as string);
     res.status(200).json({
       success: true,
       message: "Slot updated successfully",

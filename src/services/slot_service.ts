@@ -57,6 +57,10 @@ export const updateSlotService = async (userId: string, slotId: string) => {
           state: "held",
           heldUntil: { lt: now },
         },
+        {
+          state: "held",
+          heldByUserId: userId,
+        },
       ],
     },
     data: {
