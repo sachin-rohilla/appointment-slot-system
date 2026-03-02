@@ -9,6 +9,8 @@ export const signupSchema = z
 
     email: z.string().email("Invalid email format").toLowerCase(),
 
+    role: z.enum(["USER", "ADMIN"]),
+
     password: z
       .string()
       .min(8, "Password must be at least 8 characters")
@@ -27,7 +29,6 @@ export const signupSchema = z
     message: "Passwords do not match",
     path: ["confirmPassword"],
   });
-
 export const signinSchema = z.object({
   email: z.string().email("Invalid email format").toLowerCase(),
 

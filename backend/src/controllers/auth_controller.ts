@@ -6,12 +6,14 @@ export const signUpController = async (
   next: NextFunction,
 ) => {
   try {
-    const { name, email, password } = req.body;
-    await signUpService({ name, email, password });
+    const { name, email, password, role } = req.body;
+    console.log(role);
+    const result = await signUpService({ name, email, password, role });
 
     res.status(201).json({
       success: true,
       message: "User created successfully",
+      data: result,
     });
   } catch (error) {
     next(error);

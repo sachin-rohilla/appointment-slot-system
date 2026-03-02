@@ -7,6 +7,7 @@ interface ISignUpService {
   name: string;
   email: string;
   password: string;
+  role: "user" | "admin";
 }
 
 interface ISignInService {
@@ -18,18 +19,32 @@ export const signUpService = async ({
   name,
   email,
   password,
+  role,
 }: ISignUpService) => {
   const normalizedEmail = email.toLowerCase();
   const hashedPassword = await generateHashPassword(password);
 
   try {
-    return await prisma.user.create({
+    const user = await prisma.user.create({
       data: {
         name,
         email: normalizedEmail,
         password: hashedPassword,
+        role,
       },
     });
+
+    const accessToken = generateAccessToken(user.id, user.role);
+
+    return {
+      token: accessToken,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+    };
   } catch (error: any) {
     if (error.code === "P2002") {
       throw new AppError("User already exists", 400);
@@ -65,7 +80,7 @@ export const signInService = async ({ email, password }: ISignInService) => {
   const accessToken = generateAccessToken(user.id, user.role);
 
   return {
-    accessToken,
+    token: accessToken,
     user: {
       id: user.id,
       name: user.name,
