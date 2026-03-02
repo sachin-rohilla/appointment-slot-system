@@ -1,5 +1,16 @@
 const API_BASE_URL = "http://localhost:5000/api/v1";
 
+export interface PaginatedApiResponse<T = any> {
+  success: boolean;
+  data?: T[];
+  page?: number;
+  limit?: number;
+  totalCount?: number;
+  totalPages?: number;
+  message?: string;
+  error?: string;
+}
+
 export interface ApiResponse<T = any> {
   success: boolean;
   data?: T;
@@ -101,8 +112,26 @@ class ApiClient {
   }
 
   // Slot endpoints
-  async getAllSlots(): Promise<ApiResponse<Slot[]>> {
-    return this.request("/slots/all-list");
+  async getAllSlots(
+    page: number = 1,
+    limit: number = 10,
+  ): Promise<PaginatedApiResponse<Slot>> {
+    const params = new URLSearchParams({
+      page: page.toString(),
+      limit: limit.toString(),
+    });
+    return this.request(`/slots/all-list?${params}`);
+  }
+
+  async getDeletedSlots(
+    page: number = 1,
+    limit: number = 10,
+  ): Promise<PaginatedApiResponse<Slot>> {
+    const params = new URLSearchParams({
+      page: page.toString(),
+      limit: limit.toString(),
+    });
+    return this.request(`/slots/deleted-list?${params}`);
   }
 
   async createSlot(
@@ -114,6 +143,20 @@ class ApiClient {
     return this.request("/slots/create", {
       method: "POST",
       body: JSON.stringify(slotData),
+    });
+  }
+
+  async deleteSlots(slotIds: string[]): Promise<ApiResponse> {
+    return this.request("/slots/delete", {
+      method: "DELETE",
+      body: JSON.stringify({ slotIds }),
+    });
+  }
+
+  async restoreSlots(slotIds: string[]): Promise<ApiResponse> {
+    return this.request("/slots/restore", {
+      method: "PATCH",
+      body: JSON.stringify({ slotIds }),
     });
   }
 

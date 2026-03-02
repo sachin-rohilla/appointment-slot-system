@@ -5,6 +5,8 @@ import {
   createSlotController,
   deleteSlotsController,
   getAllSlotsListController,
+  getDeletedSlotsController,
+  restoreSlotsController,
 } from "../controllers/slot_controller";
 
 const slotRouter = Router();
@@ -16,6 +18,18 @@ slotRouter.post(
   createSlotController,
 );
 slotRouter.get("/all-list", authMiddleware, getAllSlotsListController);
+slotRouter.get(
+  "/deleted-list",
+  authMiddleware,
+  authorizeMiddleware("ADMIN"),
+  getDeletedSlotsController,
+);
+slotRouter.patch(
+  "/restore",
+  authMiddleware,
+  authorizeMiddleware("ADMIN"),
+  restoreSlotsController,
+);
 slotRouter.delete(
   "/delete",
   authMiddleware,
