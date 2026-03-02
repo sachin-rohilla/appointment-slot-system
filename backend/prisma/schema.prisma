@@ -26,6 +26,7 @@ model Slot {
   startTime DateTime
   endTime   DateTime
   state     String    @default("available")
+  isDeleted Boolean   @default(false)
   heldByUserId String?
   heldUntil DateTime?
 

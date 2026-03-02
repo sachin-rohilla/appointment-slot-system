@@ -40,3 +40,29 @@ export const createSlotService = async (payload: CreateSlotServiceInput) => {
     return newSlot;
   });
 };
+
+export const getAllSlotsService = async () => {
+  return await prisma.slot.findMany({
+    where: {
+      isDeleted: false,
+    },
+  });
+};
+
+export const deleteSlotsService = async (slotIds: string[]) => {
+  const deletedSlots = await prisma.slot.updateMany({
+    where: {
+      isDeleted: false,
+      id: {
+        in: slotIds,
+      },
+    },
+    data: {
+      isDeleted: true,
+    },
+  });
+  if (deletedSlots.count === 0) {
+    throw new AppError("No slots found with the given IDs", 404);
+  }
+  return deletedSlots;
+};
