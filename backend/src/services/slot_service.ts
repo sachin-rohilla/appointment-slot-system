@@ -128,3 +128,33 @@ export const deleteSlotsService = async (slotIds: string[]) => {
   }
   return deletedSlots;
 };
+
+export const updateSlotsService = async (slotId: string, userId: string) => {
+  const now = new Date();
+  const HOLD_DURATION_MS = 5 * 60 * 1000;
+
+  const result = await prisma.slot.updateMany({
+    where: {
+      id: slotId,
+      endTime: { gt: now },
+      OR: [
+        { state: "available" },
+        {
+          state: "held",
+          heldUntil: { lt: now },
+        },
+      ],
+    },
+    data: {
+      state: "held",
+      heldUntil: new Date(now.getTime() + HOLD_DURATION_MS),
+      heldByUserId: userId,
+    },
+  });
+
+  if (result.count === 0) {
+    throw new AppError("Slot is not available or already booked", 400);
+  }
+
+  return true;
+};

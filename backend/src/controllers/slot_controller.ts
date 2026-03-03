@@ -5,6 +5,7 @@ import {
   getAllSlotsService,
   getDeletedSlotsService,
   restoreSlotsService,
+  updateSlotsService,
 } from "../services/slot_service";
 import { AppError } from "../utils/app_error";
 
@@ -102,6 +103,30 @@ export const deleteSlotsController = async (
     res.status(200).json({
       success: true,
       message: "Slots deleted successfully",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateSlotsController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const { slotId } = req.params;
+    const { userId } = (req as any).user;
+    if (!slotId) {
+      throw new AppError("Slot ID is required", 400);
+    }
+    if (!userId) {
+      throw new AppError("User ID is required", 400);
+    }
+    await updateSlotsService(slotId as string, userId as string);
+    res.status(200).json({
+      success: true,
+      message: "Slot updated successfully",
     });
   } catch (error) {
     next(error);

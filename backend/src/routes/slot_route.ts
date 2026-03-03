@@ -7,6 +7,7 @@ import {
   getAllSlotsListController,
   getDeletedSlotsController,
   restoreSlotsController,
+  updateSlotsController,
 } from "../controllers/slot_controller";
 
 const slotRouter = Router();
@@ -36,5 +37,7 @@ slotRouter.delete(
   authorizeMiddleware("ADMIN"),
   deleteSlotsController,
 );
+
+slotRouter.patch("/hold/:slotId", authMiddleware, updateSlotsController);
 
 export default slotRouter;

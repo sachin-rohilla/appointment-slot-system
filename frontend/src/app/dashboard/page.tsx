@@ -34,6 +34,7 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
+  Timer,
 } from "lucide-react";
 
 // Pagination Component
@@ -139,6 +140,62 @@ const Pagination = ({
         </button>
       </div>
     </div>
+  );
+};
+
+// Countdown Timer Component
+const CountdownTimer = ({
+  expiryTime,
+  onExpire,
+  className = "",
+}: {
+  expiryTime: string;
+  onExpire?: () => void;
+  className?: string;
+}) => {
+  const [timeLeft, setTimeLeft] = useState<number>(0);
+  const [isExpired, setIsExpired] = useState(false);
+
+  useEffect(() => {
+    const calculateTimeLeft = () => {
+      const now = new Date().getTime();
+      const expiry = new Date(expiryTime).getTime();
+      const difference = expiry - now;
+
+      if (difference > 0) {
+        setTimeLeft(Math.floor(difference / 1000));
+        setIsExpired(false);
+      } else {
+        setTimeLeft(0);
+        setIsExpired(true);
+        if (onExpire) {
+          onExpire();
+        }
+      }
+    };
+
+    calculateTimeLeft();
+    const timer = setInterval(calculateTimeLeft, 1000);
+
+    return () => clearInterval(timer);
+  }, [expiryTime, onExpire]);
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
+  };
+
+  if (isExpired) {
+    return (
+      <span className={`text-red-600 font-medium ${className}`}>Expired</span>
+    );
+  }
+
+  return (
+    <span className={`text-amber-600 font-medium ${className}`}>
+      {formatTime(timeLeft)}
+    </span>
   );
 };
 
@@ -397,15 +454,17 @@ const SlotsTab = ({
                     </div>
                   </div>
                   <div
-                    className={`px-3 py-1 rounded-full text-xs font-medium border flex items-center gap-1 ${isSlotAvailable(slot) ? "bg-emerald-50 text-emerald-700 border-emerald-200" : slot.state === "held" ? "bg-amber-50 text-amber-700 border-amber-200" : "bg-red-50 text-red-700 border-red-200"}`}
+                    className={`px-3 py-1 rounded-full text-xs font-medium border flex items-center gap-1 ${isSlotAvailable(slot) ? "bg-emerald-50 text-emerald-700 border-emerald-200" : slot.state === "held" ? (slot.heldByUserId === user?.id ? "bg-blue-50 text-blue-700 border-blue-200" : "bg-amber-50 text-amber-700 border-amber-200") : "bg-red-50 text-red-700 border-red-200"}`}
                   >
                     <div
-                      className={`w-2 h-2 rounded-full ${isSlotAvailable(slot) ? "bg-emerald-500" : slot.state === "held" ? "bg-amber-500" : "bg-red-500"}`}
+                      className={`w-2 h-2 rounded-full ${isSlotAvailable(slot) ? "bg-emerald-500" : slot.state === "held" ? (slot.heldByUserId === user?.id ? "bg-blue-500" : "bg-amber-500") : "bg-red-500"}`}
                     />
                     {isSlotAvailable(slot)
                       ? "Available"
                       : slot.state === "held"
-                        ? "On Hold"
+                        ? slot.heldByUserId === user?.id
+                          ? "Your Hold"
+                          : "On Hold"
                         : "Booked"}
                   </div>
                 </div>
@@ -444,7 +503,7 @@ const SlotsTab = ({
                           Hold Slot
                         </DialogTitle>
                         <DialogDescription className="text-gray-600 font-light">
-                          Hold this slot for 15 minutes to complete your booking
+                          Hold this slot for 60 minutes to complete your booking
                         </DialogDescription>
                       </DialogHeader>
                       <div className="space-y-6">
@@ -452,12 +511,13 @@ const SlotsTab = ({
                           <div className="flex items-center gap-2 mb-2">
                             <Clock className="w-4 h-4 text-amber-600" />
                             <p className="text-sm font-medium text-amber-800">
-                              Important: Hold expires in 15 minutes
+                              Important: Hold expires in 60 minutes
                             </p>
                           </div>
                           <p className="text-xs text-amber-700">
-                            You must complete your booking within 15 minutes of
-                            holding this slot.
+                            You must complete your booking within 60 minutes of
+                            holding this slot. The slot will be released
+                            automatically if not booked in time.
                           </p>
                         </div>
                         <div className="bg-gray-50 rounded-lg p-5 space-y-3">
@@ -508,10 +568,23 @@ const SlotsTab = ({
                     <DialogTrigger asChild>
                       <button
                         onClick={() => setSelectedSlot(slot)}
-                        className="w-full bg-blue-600 text-white py-3 rounded-full text-sm font-medium hover:bg-blue-700 transition-all duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
+                        className={`w-full bg-blue-600 text-white py-3 rounded-full text-sm font-medium hover:bg-blue-700 transition-all duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl ${
+                          slot.heldUntil &&
+                          new Date(slot.heldUntil).getTime() -
+                            new Date().getTime() <
+                            300000
+                            ? "animate-pulse ring-2 ring-blue-300 ring-offset-2"
+                            : ""
+                        }`}
                       >
                         <Calendar className="w-4 h-4" />
                         Book Slot
+                        {slot.heldUntil && (
+                          <CountdownTimer
+                            expiryTime={slot.heldUntil}
+                            className="text-xs bg-blue-700 px-2 py-1 rounded-full"
+                          />
+                        )}
                       </button>
                     </DialogTrigger>
                     <DialogContent className="sm:max-w-md border border-gray-200">
@@ -524,6 +597,20 @@ const SlotsTab = ({
                         </DialogDescription>
                       </DialogHeader>
                       <div className="space-y-6">
+                        {slot.heldUntil && (
+                          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Timer className="w-4 h-4 text-amber-600" />
+                              <p className="text-sm font-medium text-amber-800">
+                                Hold expires in:{" "}
+                                <CountdownTimer expiryTime={slot.heldUntil} />
+                              </p>
+                            </div>
+                            <p className="text-xs text-amber-700">
+                              Complete your booking before the hold expires
+                            </p>
+                          </div>
+                        )}
                         <div className="bg-gray-50 rounded-lg p-5 space-y-3">
                           <div className="flex items-center gap-3">
                             <Calendar className="w-4 h-4 text-gray-400" />
@@ -578,6 +665,12 @@ const SlotsTab = ({
                         >
                           {slot.state === "held" ? "On Hold" : "Booked"}
                         </p>
+                        {slot.state === "held" && slot.heldUntil && (
+                          <p className="text-xs mt-1 text-amber-600">
+                            Expires in:{" "}
+                            <CountdownTimer expiryTime={slot.heldUntil} />
+                          </p>
+                        )}
                         {slot.heldByUserId && (
                           <p
                             className={`text-xs mt-1 ${slot.state === "held" ? "text-amber-600" : "text-red-600"}`}
@@ -1085,8 +1178,27 @@ export default function DashboardPage() {
         setIsBookingDialogOpen(false);
         setSuccess("Slot held successfully! You can now book it.");
         setError("");
-        fetchSlots(); // Refresh slots
-        setTimeout(() => setSuccess(""), 3000);
+        fetchSlots(); // Refresh slots to show updated state
+        setTimeout(() => setSuccess(""), 5000); // Show success for 5 seconds
+
+        // Set up auto-refresh when hold is about to expire
+        if (selectedSlot.heldUntil) {
+          const holdExpiry = new Date(selectedSlot.heldUntil);
+          const now = new Date();
+          const timeUntilExpiry = holdExpiry.getTime() - now.getTime();
+
+          // Refresh 30 seconds before expiry and every 10 seconds after
+          if (timeUntilExpiry > 30000) {
+            setTimeout(() => {
+              const refreshInterval = setInterval(() => {
+                fetchSlots();
+              }, 10000);
+
+              // Clear interval after 2 minutes
+              setTimeout(() => clearInterval(refreshInterval), 120000);
+            }, timeUntilExpiry - 30000);
+          }
+        }
       } else {
         setError(response.error || "Failed to hold slot");
         setSuccess("");
@@ -1141,16 +1253,36 @@ export default function DashboardPage() {
         setError("");
         fetchSlots(); // Refresh slots
         fetchBookings(); // Refresh bookings
-        setTimeout(() => setSuccess(""), 3000);
+        setTimeout(() => setSuccess(""), 5000); // Show success for 5 seconds
       } else {
-        setError(response.error || "Failed to create booking");
+        // Handle specific booking errors
+        if (
+          response.error?.includes("hold") ||
+          response.error?.includes("expired")
+        ) {
+          setError(
+            "Hold has expired or slot is no longer available. Please try holding the slot again.",
+          );
+          fetchSlots(); // Refresh to show current state
+        } else {
+          setError(response.error || "Failed to create booking");
+        }
         setSuccess("");
       }
     } catch (error: unknown) {
       console.error("Booking error:", error);
-      setError(
-        error instanceof Error ? error.message : "Failed to create booking",
-      );
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to create booking";
+
+      // Provide more specific error messages
+      if (errorMessage.includes("hold") || errorMessage.includes("expired")) {
+        setError(
+          "Hold has expired or slot is no longer available. Please try holding the slot again.",
+        );
+        fetchSlots(); // Refresh to show current state
+      } else {
+        setError(errorMessage);
+      }
       setSuccess("");
     }
   };
