@@ -143,6 +143,12 @@ const Pagination = ({
   );
 };
 
+// Helper function to check if hold is still valid
+const isHoldValid = (heldUntil: string | null | undefined) => {
+  if (!heldUntil) return false;
+  return new Date(heldUntil).getTime() > new Date().getTime();
+};
+
 // Countdown Timer Component
 const CountdownTimer = ({
   expiryTime,
@@ -454,10 +460,10 @@ const SlotsTab = ({
                     </div>
                   </div>
                   <div
-                    className={`px-3 py-1 rounded-full text-xs font-medium border flex items-center gap-1 ${isSlotAvailable(slot) ? "bg-emerald-50 text-emerald-700 border-emerald-200" : slot.state === "held" ? (slot.heldByUserId === user?.id ? "bg-blue-50 text-blue-700 border-blue-200" : "bg-amber-50 text-amber-700 border-amber-200") : "bg-red-50 text-red-700 border-red-200"}`}
+                    className={`px-3 py-1 rounded-full text-xs font-medium border flex items-center gap-1 ${isSlotAvailable(slot) ? "bg-emerald-50 text-emerald-700 border-emerald-200" : slot.state === "held" ? (slot.heldByUserId === user?.id ? "bg-blue-50 text-blue-700 border-blue-200" : "bg-gray-50 text-gray-700 border-gray-200") : "bg-red-50 text-red-700 border-red-200"}`}
                   >
                     <div
-                      className={`w-2 h-2 rounded-full ${isSlotAvailable(slot) ? "bg-emerald-500" : slot.state === "held" ? (slot.heldByUserId === user?.id ? "bg-blue-500" : "bg-amber-500") : "bg-red-500"}`}
+                      className={`w-2 h-2 rounded-full ${isSlotAvailable(slot) ? "bg-emerald-500" : slot.state === "held" ? (slot.heldByUserId === user?.id ? "bg-blue-500" : "bg-gray-500") : "bg-red-500"}`}
                     />
                     {isSlotAvailable(slot)
                       ? "Available"
@@ -560,7 +566,9 @@ const SlotsTab = ({
                       </div>
                     </DialogContent>
                   </Dialog>
-                ) : slot.state === "held" && slot.heldByUserId === user?.id ? (
+                ) : slot.state === "held" &&
+                  slot.heldByUserId === user?.id &&
+                  isHoldValid(slot.heldUntil) ? (
                   <Dialog
                     open={isBookingDialogOpen && selectedSlot?.id === slot.id}
                     onOpenChange={setIsBookingDialogOpen}
@@ -654,26 +662,26 @@ const SlotsTab = ({
                 ) : (
                   <div className="text-center py-4">
                     <div
-                      className={`inline-flex items-center gap-3 px-4 py-3 rounded-lg ${slot.state === "held" ? "bg-amber-50 border border-amber-200" : "bg-red-50 border border-red-200"}`}
+                      className={`inline-flex items-center gap-3 px-4 py-3 rounded-lg ${slot.state === "held" ? "bg-gray-50 border border-gray-200" : "bg-red-50 border border-red-200"}`}
                     >
                       <div
-                        className={`w-3 h-3 rounded-full ${slot.state === "held" ? "bg-amber-500" : "bg-red-500"}`}
+                        className={`w-3 h-3 rounded-full ${slot.state === "held" ? "bg-gray-500" : "bg-red-500"}`}
                       />
                       <div className="text-left">
                         <p
-                          className={`text-sm font-medium ${slot.state === "held" ? "text-amber-700" : "text-red-700"}`}
+                          className={`text-sm font-medium ${slot.state === "held" ? "text-gray-700" : "text-red-700"}`}
                         >
                           {slot.state === "held" ? "On Hold" : "Booked"}
                         </p>
                         {slot.state === "held" && slot.heldUntil && (
-                          <p className="text-xs mt-1 text-amber-600">
+                          <p className="text-xs mt-1 text-gray-600">
                             Expires in:{" "}
                             <CountdownTimer expiryTime={slot.heldUntil} />
                           </p>
                         )}
                         {slot.heldByUserId && (
                           <p
-                            className={`text-xs mt-1 ${slot.state === "held" ? "text-amber-600" : "text-red-600"}`}
+                            className={`text-xs mt-1 ${slot.state === "held" ? "text-gray-600" : "text-red-600"}`}
                           >
                             Held by: {slot.heldByUserId}
                           </p>
@@ -1296,7 +1304,7 @@ export default function DashboardPage() {
         setError("");
         fetchSlots(); // Refresh slots
         fetchBookings(); // Refresh bookings
-        setTimeout(() => setSuccess(""), 3000);
+        setTimeout(() => setSuccess(""), 5000); // Show success for 5 seconds
       } else {
         setError(response.error || "Failed to cancel booking");
         setSuccess("");
@@ -1332,7 +1340,7 @@ export default function DashboardPage() {
         setError("");
         fetchSlots(); // Refresh slots
         // Clear success message after 3 seconds
-        setTimeout(() => setSuccess(""), 3000);
+        setTimeout(() => setSuccess(""), 5000); // Show success for 5 seconds
       } else {
         setError(response.error || "Failed to create slot");
         setSuccess("");
@@ -1360,7 +1368,7 @@ export default function DashboardPage() {
         setShowDeleteConfirm(false);
         fetchSlots(); // Refresh slots
         fetchDeletedSlots(); // Refresh deleted slots
-        setTimeout(() => setSuccess(""), 3000);
+        setTimeout(() => setSuccess(""), 5000); // Show success for 5 seconds
       } else {
         setError(response.error || "Failed to delete slots");
         setSuccess("");
@@ -1423,7 +1431,7 @@ export default function DashboardPage() {
         setShowRestoreConfirm(false);
         fetchSlots(); // Refresh active slots
         fetchDeletedSlots(); // Refresh deleted slots
-        setTimeout(() => setSuccess(""), 3000);
+        setTimeout(() => setSuccess(""), 5000); // Show success for 5 seconds
       } else {
         setError(response.error || "Failed to restore slots");
         setSuccess("");
