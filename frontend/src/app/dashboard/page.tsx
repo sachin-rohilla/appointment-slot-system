@@ -470,15 +470,15 @@ const SlotsTab = ({
           {slots.map((slot: any) => (
             <div
               key={slot.id}
-              className={`group bg-white border border-gray-200 rounded-2xl overflow-hidden hover:shadow-lg transition-all duration-300 hover:scale-102 ${selectedSlots.includes(slot.id) ? "ring-2 ring-blue-500 ring-offset-2" : ""}`}
+              className={`group bg-white border border-gray-200 rounded-2xl overflow-hidden hover:shadow-lg transition-all duration-300 hover:scale-102 ${selectedSlots.includes(slot.id) ? "ring-2 ring-blue-500 ring-offset-2" : slot.state === "expired" ? "opacity-75 border-orange-200" : ""}`}
             >
               {/* Status Badge */}
               <div className="absolute top-3 right-3 z-10">
                 <div
-                  className={`px-3 py-1 rounded-full text-xs font-medium border flex items-center gap-1.5 shadow-sm ${isSlotAvailable(slot) ? "bg-emerald-50 text-emerald-700 border-emerald-200" : slot.state === "held" ? (slot.heldByUserId === user?.id ? "bg-blue-50 text-blue-700 border-blue-200" : "bg-gray-50 text-gray-700 border-gray-200") : "bg-red-50 text-red-700 border-red-200"}`}
+                  className={`px-3 py-1 rounded-full text-xs font-medium border flex items-center gap-1.5 shadow-sm ${isSlotAvailable(slot) ? "bg-emerald-50 text-emerald-700 border-emerald-200" : slot.state === "held" ? (slot.heldByUserId === user?.id ? "bg-blue-50 text-blue-700 border-blue-200" : "bg-gray-50 text-gray-700 border-gray-200") : slot.state === "expired" ? "bg-orange-50 text-orange-700 border-orange-200" : "bg-red-50 text-red-700 border-red-200"}`}
                 >
                   <div
-                    className={`w-1.5 h-1.5 rounded-full ${isSlotAvailable(slot) ? "bg-emerald-500" : slot.state === "held" ? (slot.heldByUserId === user?.id ? "bg-blue-500" : "bg-gray-500") : "bg-red-500"}`}
+                    className={`w-1.5 h-1.5 rounded-full ${isSlotAvailable(slot) ? "bg-emerald-500" : slot.state === "held" ? (slot.heldByUserId === user?.id ? "bg-blue-500" : "bg-gray-500") : slot.state === "expired" ? "bg-orange-500" : "bg-red-500"}`}
                   />
                   {isSlotAvailable(slot)
                     ? "Available"
@@ -486,7 +486,9 @@ const SlotsTab = ({
                       ? slot.heldByUserId === user?.id
                         ? "Your Hold"
                         : "On Hold"
-                      : "Booked"}
+                      : slot.state === "expired"
+                        ? "Expired"
+                        : "Booked"}
                 </div>
               </div>
 
@@ -712,16 +714,20 @@ const SlotsTab = ({
                 ) : (
                   <div className="text-center py-4">
                     <div
-                      className={`inline-flex items-center gap-3 px-4 py-3 rounded-lg ${slot.state === "held" ? "bg-gray-50 border border-gray-200" : "bg-red-50 border border-red-200"}`}
+                      className={`inline-flex items-center gap-3 px-4 py-3 rounded-lg ${slot.state === "held" ? "bg-gray-50 border border-gray-200" : slot.state === "expired" ? "bg-orange-50 border border-orange-200" : "bg-red-50 border border-red-200"}`}
                     >
                       <div
-                        className={`w-2 h-2 rounded-full ${slot.state === "held" ? "bg-gray-400" : "bg-red-400"}`}
+                        className={`w-2 h-2 rounded-full ${slot.state === "held" ? "bg-gray-400" : slot.state === "expired" ? "bg-orange-400" : "bg-red-400"}`}
                       />
                       <div className="text-left">
                         <p
-                          className={`text-sm font-medium ${slot.state === "held" ? "text-gray-700" : "text-red-700"}`}
+                          className={`text-sm font-medium ${slot.state === "held" ? "text-gray-700" : slot.state === "expired" ? "text-orange-700" : "text-red-700"}`}
                         >
-                          {slot.state === "held" ? "On Hold" : "Booked"}
+                          {slot.state === "held"
+                            ? "On Hold"
+                            : slot.state === "expired"
+                              ? "Expired"
+                              : "Booked"}
                         </p>
                         {slot.state === "held" && slot.heldUntil && (
                           <p className="text-xs mt-1 text-gray-600 flex items-center gap-1">
@@ -730,9 +736,14 @@ const SlotsTab = ({
                             <CountdownTimer expiryTime={slot.heldUntil} />
                           </p>
                         )}
+                        {slot.state === "expired" && (
+                          <p className="text-xs mt-1 text-orange-600">
+                            This slot has expired
+                          </p>
+                        )}
                         {slot.heldByUserId && (
                           <p
-                            className={`text-xs mt-1 ${slot.state === "held" ? "text-gray-600" : "text-red-600"}`}
+                            className={`text-xs mt-1 ${slot.state === "held" ? "text-gray-600" : slot.state === "expired" ? "text-orange-600" : "text-red-600"}`}
                           >
                             {slot.heldByUserId}
                           </p>
@@ -1522,6 +1533,14 @@ export default function DashboardPage() {
 
   const isSlotAvailable = (slot: Slot) => {
     return slot.state === "available";
+  };
+
+  const isSlotBooked = (slot: Slot) => {
+    return slot.state === "booked";
+  };
+
+  const isSlotExpired = (slot: Slot) => {
+    return slot.state === "expired";
   };
 
   if (isLoading) {
