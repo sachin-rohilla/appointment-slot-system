@@ -7,6 +7,7 @@ import { errorMiddleware } from "./middlewares/error_middleware";
 import authRouter from "./routes/auth_route";
 import slotRouter from "./routes/slot_route";
 import bookingRouter from "./routes/booking_route";
+import "./jobs/cron";
 
 dotenv.config();
 

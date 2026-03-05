@@ -35,6 +35,34 @@ import {
   ChevronLeft,
   ChevronRight,
   Timer,
+  Sparkles,
+  Zap,
+  Crown,
+  Gem,
+  Star,
+  Heart,
+  Gift,
+  PartyPopper,
+  Confetti,
+  Flame,
+  Trophy,
+  Target,
+  Rocket,
+  Smile,
+  Frown,
+  Meh,
+  Laugh,
+  Sun,
+  Moon,
+  Cloud,
+  Coffee,
+  Cake,
+  Music,
+  Camera,
+  Palette,
+  Brush,
+  Wand2,
+  Search,
 } from "lucide-react";
 
 // Pagination Component
@@ -400,91 +428,113 @@ const SlotsTab = ({
         </div>
       ) : slots.length === 0 ? (
         <div className="text-center py-20">
-          <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <Calendar className="w-10 h-10 text-gray-400" />
+          <div className="w-24 h-24 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center mx-auto mb-8 relative">
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-400/20 to-purple-400/20 rounded-full animate-pulse"></div>
+            <Calendar className="w-12 h-12 text-gray-400 relative z-10" />
           </div>
-          <h3 className="text-xl font-light text-gray-900 mb-3">
-            No slots available
+          <h3 className="text-2xl font-semibold text-gray-900 mb-4 flex items-center justify-center gap-2">
+            {user?.role === "ADMIN" ? (
+              <>
+                <Sparkles className="w-6 h-6 text-yellow-500" />
+                No Slots Available Yet
+                <Sparkles className="w-6 h-6 text-yellow-500" />
+              </>
+            ) : (
+              <>
+                <Search className="w-6 h-6 text-blue-500" />
+                No Slots Available
+                <Search className="w-6 h-6 text-blue-500" />
+              </>
+            )}
           </h3>
-          <p className="text-gray-600 mb-6 font-light">
+          <p className="text-gray-600 mb-8 text-lg font-medium">
             {user?.role === "ADMIN"
-              ? "Create a new slot to get started"
-              : "Check back later for available slots"}
+              ? "🎨 Create your first slot to start booking appointments"
+              : "📅 Check back later for available appointment slots"}
           </p>
           {user?.role === "ADMIN" && (
             <button
               onClick={() => setIsCreateSlotDialogOpenLocal(true)}
-              className="bg-black text-white px-8 py-3 rounded-full text-sm font-medium hover:bg-gray-800 transition-colors"
+              className="bg-gradient-to-r from-black to-gray-800 text-white px-10 py-4 rounded-2xl text-sm font-semibold hover:from-gray-800 hover:to-black transition-all duration-300 flex items-center gap-3 shadow-xl hover:shadow-2xl transform hover:-translate-y-1 mx-auto"
             >
-              <Plus className="w-4 h-4 inline mr-2" />
-              Create Your First Slot
+              <div className="p-2 bg-white/20 rounded-lg">
+                <Plus className="w-5 h-5" />
+              </div>
+              <span>✨ Create Your First Slot</span>
+              <Rocket className="w-5 h-5 opacity-70" />
             </button>
           )}
         </div>
       ) : (
-        <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {slots.map((slot: any) => (
             <div
               key={slot.id}
-              className={`bg-white border border-gray-200 rounded-2xl overflow-hidden hover:shadow-xl transition-all duration-300 hover:scale-105 ${selectedSlots.includes(slot.id) ? "ring-2 ring-blue-500 ring-offset-2" : ""}`}
+              className={`group bg-white border border-gray-200 rounded-2xl overflow-hidden hover:shadow-lg transition-all duration-300 hover:scale-102 ${selectedSlots.includes(slot.id) ? "ring-2 ring-blue-500 ring-offset-2" : ""}`}
             >
-              <div className="border-b border-gray-100 px-6 py-5">
+              {/* Status Badge */}
+              <div className="absolute top-3 right-3 z-10">
+                <div
+                  className={`px-3 py-1 rounded-full text-xs font-medium border flex items-center gap-1.5 shadow-sm ${isSlotAvailable(slot) ? "bg-emerald-50 text-emerald-700 border-emerald-200" : slot.state === "held" ? (slot.heldByUserId === user?.id ? "bg-blue-50 text-blue-700 border-blue-200" : "bg-gray-50 text-gray-700 border-gray-200") : "bg-red-50 text-red-700 border-red-200"}`}
+                >
+                  <div
+                    className={`w-1.5 h-1.5 rounded-full ${isSlotAvailable(slot) ? "bg-emerald-500" : slot.state === "held" ? (slot.heldByUserId === user?.id ? "bg-blue-500" : "bg-gray-500") : "bg-red-500"}`}
+                  />
+                  {isSlotAvailable(slot)
+                    ? "Available"
+                    : slot.state === "held"
+                      ? slot.heldByUserId === user?.id
+                        ? "Your Hold"
+                        : "On Hold"
+                      : "Booked"}
+                </div>
+              </div>
+
+              {/* Card Header */}
+              <div className="border-b border-gray-100 px-5 py-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     {user?.role === "ADMIN" && (
                       <button
                         onClick={() => toggleSlotSelection(slot.id)}
-                        className="flex-shrink-0"
+                        className="p-1.5 rounded-lg hover:bg-gray-50 transition-colors"
                       >
                         {selectedSlots.includes(slot.id) ? (
-                          <CheckSquare className="w-5 h-5 text-blue-600" />
+                          <CheckSquare className="w-4 h-4 text-blue-600" />
                         ) : (
-                          <Square className="w-5 h-5 text-gray-400 hover:text-gray-600 transition-colors" />
+                          <Square className="w-4 h-4 text-gray-400 hover:text-gray-600" />
                         )}
                       </button>
                     )}
                     <div>
                       <div className="flex items-center gap-2 mb-2">
-                        <Calendar className="w-5 h-5 text-gray-400" />
-                        <h3 className="text-xl font-light text-gray-900">
+                        <Calendar className="w-4 h-4 text-gray-400" />
+                        <h3 className="text-lg font-medium text-gray-900">
                           {formatDate(slot.startTime)}
                         </h3>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Clock className="w-4 h-4 text-gray-400" />
-                        <span className="text-sm text-gray-600 font-light">
+                        <Clock className="w-3.5 h-3.5 text-gray-400" />
+                        <span className="text-sm text-gray-600">
                           {formatTime(slot.startTime)} -{" "}
                           {formatTime(slot.endTime)}
                         </span>
                       </div>
                     </div>
                   </div>
-                  <div
-                    className={`px-3 py-1 rounded-full text-xs font-medium border flex items-center gap-1 ${isSlotAvailable(slot) ? "bg-emerald-50 text-emerald-700 border-emerald-200" : slot.state === "held" ? (slot.heldByUserId === user?.id ? "bg-blue-50 text-blue-700 border-blue-200" : "bg-gray-50 text-gray-700 border-gray-200") : "bg-red-50 text-red-700 border-red-200"}`}
-                  >
-                    <div
-                      className={`w-2 h-2 rounded-full ${isSlotAvailable(slot) ? "bg-emerald-500" : slot.state === "held" ? (slot.heldByUserId === user?.id ? "bg-blue-500" : "bg-gray-500") : "bg-red-500"}`}
-                    />
-                    {isSlotAvailable(slot)
-                      ? "Available"
-                      : slot.state === "held"
-                        ? slot.heldByUserId === user?.id
-                          ? "Your Hold"
-                          : "On Hold"
-                        : "Booked"}
-                  </div>
                 </div>
               </div>
-              <div className="p-6">
+              <div className="p-5">
+                {/* Resource Section */}
                 <div className="flex items-center gap-3 mb-6">
-                  <div className="p-2 bg-blue-50 rounded-lg">
-                    <MapPin className="w-5 h-5 text-blue-600" />
+                  <div className="p-2 bg-gray-50 rounded-lg">
+                    <MapPin className="w-5 h-5 text-gray-600" />
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500 uppercase tracking-wide">
+                    <p className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">
                       Resource
                     </p>
-                    <p className="text-sm font-medium text-gray-900">
+                    <p className="text-base font-medium text-gray-900">
                       {slot.resource}
                     </p>
                   </div>
@@ -497,7 +547,7 @@ const SlotsTab = ({
                     <DialogTrigger asChild>
                       <button
                         onClick={() => setSelectedSlot(slot)}
-                        className="w-full bg-emerald-600 text-white py-3 rounded-full text-sm font-medium hover:bg-emerald-700 transition-all duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
+                        className="w-full bg-emerald-600 text-white py-3 rounded-xl text-sm font-medium hover:bg-emerald-700 transition-colors flex items-center justify-center gap-2 shadow-md"
                       >
                         <Calendar className="w-4 h-4" />
                         Hold Slot
@@ -509,7 +559,7 @@ const SlotsTab = ({
                           Hold Slot
                         </DialogTitle>
                         <DialogDescription className="text-gray-600 font-light">
-                          Hold this slot for 60 minutes to complete your booking
+                          Hold this slot for 5 minutes to complete your booking
                         </DialogDescription>
                       </DialogHeader>
                       <div className="space-y-6">
@@ -517,11 +567,11 @@ const SlotsTab = ({
                           <div className="flex items-center gap-2 mb-2">
                             <Clock className="w-4 h-4 text-amber-600" />
                             <p className="text-sm font-medium text-amber-800">
-                              Important: Hold expires in 60 minutes
+                              Important: Hold expires in 5 minutes
                             </p>
                           </div>
                           <p className="text-xs text-amber-700">
-                            You must complete your booking within 60 minutes of
+                            You must complete your booking within 5 minutes of
                             holding this slot. The slot will be released
                             automatically if not booked in time.
                           </p>
@@ -576,12 +626,12 @@ const SlotsTab = ({
                     <DialogTrigger asChild>
                       <button
                         onClick={() => setSelectedSlot(slot)}
-                        className={`w-full bg-blue-600 text-white py-3 rounded-full text-sm font-medium hover:bg-blue-700 transition-all duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl ${
+                        className={`w-full bg-blue-600 text-white py-3 rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 shadow-md ${
                           slot.heldUntil &&
                           new Date(slot.heldUntil).getTime() -
                             new Date().getTime() <
                             300000
-                            ? "animate-pulse ring-2 ring-blue-300 ring-offset-2"
+                            ? "ring-2 ring-blue-300 ring-offset-2"
                             : ""
                         }`}
                       >
@@ -665,7 +715,7 @@ const SlotsTab = ({
                       className={`inline-flex items-center gap-3 px-4 py-3 rounded-lg ${slot.state === "held" ? "bg-gray-50 border border-gray-200" : "bg-red-50 border border-red-200"}`}
                     >
                       <div
-                        className={`w-3 h-3 rounded-full ${slot.state === "held" ? "bg-gray-500" : "bg-red-500"}`}
+                        className={`w-2 h-2 rounded-full ${slot.state === "held" ? "bg-gray-400" : "bg-red-400"}`}
                       />
                       <div className="text-left">
                         <p
@@ -674,8 +724,9 @@ const SlotsTab = ({
                           {slot.state === "held" ? "On Hold" : "Booked"}
                         </p>
                         {slot.state === "held" && slot.heldUntil && (
-                          <p className="text-xs mt-1 text-gray-600">
-                            Expires in:{" "}
+                          <p className="text-xs mt-1 text-gray-600 flex items-center gap-1">
+                            <Timer className="w-3 h-3" />
+                            Expires:{" "}
                             <CountdownTimer expiryTime={slot.heldUntil} />
                           </p>
                         )}
@@ -683,7 +734,7 @@ const SlotsTab = ({
                           <p
                             className={`text-xs mt-1 ${slot.state === "held" ? "text-gray-600" : "text-red-600"}`}
                           >
-                            Held by: {slot.heldByUserId}
+                            {slot.heldByUserId}
                           </p>
                         )}
                       </div>
@@ -802,7 +853,7 @@ const AdminTab = ({
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
               <h2 className="text-2xl font-light text-gray-900">
-                Recently Deleted Files
+                Recently Deleted Slots
               </h2>
               <span className="px-3 py-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-full text-sm font-medium">
                 {deletedSlots.length} deleted
