@@ -36,7 +36,10 @@ export const getAllSlotsListController = async (
     const pageNumber = Math.max(Number(page) || 1, 1);
     const limitNumber = Math.min(Number(limit) || 10, 10);
 
-    const slots = await getAllSlotsService(pageNumber, limitNumber);
+    // Get userId from authenticated user
+    const userId = (req as any).user?.userId;
+
+    const slots = await getAllSlotsService(pageNumber, limitNumber, userId);
     res.status(200).json({
       success: true,
       data: slots.data,

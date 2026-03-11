@@ -257,6 +257,7 @@ const SlotsTab = ({
   handleHoldSlot,
   handleBooking,
   handleDeleteSlots,
+  handleJoinWaitlist,
   toggleSlotSelection,
   toggleAllSlotsSelection,
   newSlot,
@@ -776,22 +777,57 @@ const SlotsTab = ({
                       </div>
                     </DialogContent>
                   </Dialog>
+                ) : slot.state === "booked" &&
+                  slot.booking?.user?.email !== user?.email ? (
+                  slot.waitlist && slot.waitlist.length > 0 ? (
+                    <button
+                      disabled
+                      className="w-full bg-gradient-to-r from-gray-400 to-gray-500 text-white py-3 rounded-xl text-sm font-medium opacity-60 cursor-not-allowed flex items-center justify-center gap-2 shadow-lg"
+                    >
+                      <Users className="w-4 h-4" />
+                      You're #{slot.waitlist[0].position} in line
+                    </button>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="text-center text-sm font-serif italic text-red-700 bg-red-50/80 border border-red-200/50 px-3 py-2 rounded-lg backdrop-blur-sm">
+                        <span className="tracking-wide">
+                          Already booked by {slot.booking?.user?.name}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => handleJoinWaitlist(slot.id)}
+                        className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-3 rounded-xl text-sm font-medium hover:from-purple-700 hover:to-indigo-700 transition-all duration-300 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                      >
+                        <Users className="w-4 h-4" />
+                        Join Waiting List
+                      </button>
+                    </div>
+                  )
                 ) : slot.state === "held" && slot.heldByUserId !== user?.id ? (
-                  <button
-                    onClick={() => {
-                      // TODO: Add waiting list functionality
-                      toast({
-                        title: "Waiting List",
-                        description:
-                          "Waiting list feature coming soon! You'll be notified when this slot becomes available.",
-                        variant: "default",
-                      });
-                    }}
-                    className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-3 rounded-xl text-sm font-medium hover:from-purple-700 hover:to-indigo-700 transition-all duration-300 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
-                  >
-                    <Users className="w-4 h-4" />
-                    Join Waiting List
-                  </button>
+                  slot.waitlist && slot.waitlist.length > 0 ? (
+                    <button
+                      disabled
+                      className="w-full bg-gradient-to-r from-gray-400 to-gray-500 text-white py-3 rounded-xl text-sm font-medium opacity-60 cursor-not-allowed flex items-center justify-center gap-2 shadow-lg"
+                    >
+                      <Users className="w-4 h-4" />
+                      You're #{slot.waitlist[0].position} in line
+                    </button>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="text-center text-sm font-serif italic text-amber-700 bg-amber-50/80 border border-amber-200/50 px-3 py-2 rounded-lg backdrop-blur-sm">
+                        <span className="tracking-wide">
+                          Currently held by another user
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => handleJoinWaitlist(slot.id)}
+                        className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-3 rounded-xl text-sm font-medium hover:from-purple-700 hover:to-indigo-700 transition-all duration-300 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                      >
+                        <Users className="w-4 h-4" />
+                        Join Waiting List
+                      </button>
+                    </div>
+                  )
                 ) : (
                   <div className="text-center py-3 opacity-60">
                     <div className="text-gray-400 text-sm font-serif italic">
@@ -1553,6 +1589,52 @@ export default function DashboardPage() {
     }
   };
 
+  const handleJoinWaitlist = async (slotId: string) => {
+    try {
+      const response = await apiClient.joinWaitlist(slotId);
+
+      if (response.success) {
+        setSuccess("Successfully joined waiting list!");
+        setError("");
+        // Show success toast
+        toast({
+          title: "Success!",
+          description:
+            "You've been added to the waiting list. We'll notify you when this slot becomes available!",
+          variant: "success",
+        });
+
+        // Refresh slots to get updated waitlist status
+        fetchSlots();
+
+        setTimeout(() => setSuccess(""), 5000); // Show success for 5 seconds
+      } else {
+        setError(response.error || "Failed to join waiting list");
+        setSuccess("");
+        // Show error toast
+        toast({
+          title: "Error!",
+          description: response.error || "Failed to join waiting list",
+          variant: "destructive",
+        });
+      }
+    } catch (error: unknown) {
+      setError(
+        error instanceof Error ? error.message : "Failed to join waiting list",
+      );
+      setSuccess("");
+      // Show error toast
+      toast({
+        title: "Error!",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Failed to join waiting list",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleCreateSlot = async (onCloseDialog?: () => void) => {
     try {
       if (!newSlot.date || !newSlot.startTime || !newSlot.endTime) {
@@ -1947,6 +2029,7 @@ export default function DashboardPage() {
                 handleHoldSlot={handleHoldSlot}
                 handleBooking={handleBooking}
                 handleDeleteSlots={handleDeleteSlots}
+                handleJoinWaitlist={handleJoinWaitlist}
                 toggleSlotSelection={toggleSlotSelection}
                 toggleAllSlotsSelection={toggleAllSlotsSelection}
                 setIsCreateSlotDialogOpen={setIsCreateSlotDialogOpen}

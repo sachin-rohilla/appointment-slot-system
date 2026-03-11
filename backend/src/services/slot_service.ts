@@ -41,7 +41,11 @@ export const createSlotService = async (payload: CreateSlotServiceInput) => {
   });
 };
 
-export const getAllSlotsService = async (page: number, limit: number) => {
+export const getAllSlotsService = async (
+  page: number,
+  limit: number,
+  userId?: string,
+) => {
   const skip = (page - 1) * limit;
   const filter = {
     isDeleted: false,
@@ -67,6 +71,18 @@ export const getAllSlotsService = async (page: number, limit: number) => {
             },
           },
         },
+        waitlist: userId
+          ? {
+              where: {
+                userId: userId,
+              },
+              select: {
+                userId: true,
+                slotId: true,
+                position: true,
+              },
+            }
+          : false, // Don't include waitlist if no userId
       },
     }),
     prisma.slot.count({

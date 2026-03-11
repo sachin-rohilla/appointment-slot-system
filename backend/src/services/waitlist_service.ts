@@ -24,7 +24,10 @@ export const createWaitListService = async (userId: string, slotId: string) => {
     where: { slotId },
   });
 
-  if (existingBooking?.userId === userId) {
+  if (
+    existingBooking?.userId === userId &&
+    existingBooking.status === "confirmed"
+  ) {
     throw new AppError("User already booked this slot", 400);
   }
 

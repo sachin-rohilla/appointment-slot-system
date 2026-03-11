@@ -41,6 +41,11 @@ export interface Slot {
   heldUntil: string | null;
   createdAt: string;
   updatedAt: string;
+  waitlist?: Array<{
+    userId: string;
+    slotId: string;
+    position: number;
+  }>;
 }
 
 export interface Booking {
@@ -196,6 +201,14 @@ class ApiClient {
 
   async getUserBookings(): Promise<ApiResponse<Booking[]>> {
     return this.request("/bookings/user");
+  }
+
+  // Waitlist endpoints
+  async joinWaitlist(slotId: string): Promise<ApiResponse> {
+    return this.request("/waitlist/create", {
+      method: "POST",
+      body: JSON.stringify({ slotId }),
+    });
   }
 
   // Health check
