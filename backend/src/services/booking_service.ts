@@ -5,6 +5,15 @@ export const createBookingService = async (userId: string, slotId: string) => {
   const now = new Date();
 
   return await prisma.$transaction(async (tx) => {
+    // Check if there's already a confirmed booking for this slot
+    const existingBooking = await tx.booking.findUnique({
+      where: { slotId },
+    });
+
+    if (existingBooking && existingBooking.status === "confirmed") {
+      throw new AppError("Slot already has a booking", 400);
+    }
+
     const result = await tx.slot.updateMany({
       where: {
         id: slotId,
@@ -21,6 +30,17 @@ export const createBookingService = async (userId: string, slotId: string) => {
 
     if (result.count === 0) {
       throw new AppError("Slot hold expired or already booked", 400);
+    }
+
+    // If there's a cancelled booking, update it instead of creating new one
+    if (existingBooking && existingBooking.status === "cancelled") {
+      return await tx.booking.update({
+        where: { id: existingBooking.id },
+        data: {
+          userId,
+          status: "confirmed",
+        },
+      });
     }
 
     return await tx.booking.create({
@@ -85,6 +105,8 @@ export const cancelBookingService = async (
       },
       data: {
         state: "available",
+        heldByUserId: null,
+        heldUntil: null,
       },
     });
 

@@ -6,35 +6,76 @@ datasource db {
   provider = "postgresql"
 }
 
+//////////////////////////////////////////////////
+// ENUMS
+//////////////////////////////////////////////////
+
+enum UserRole {
+  user
+  admin
+}
+
+enum SlotState {
+  available
+  held
+  booked
+}
+
+enum BookingStatus {
+  confirmed
+  cancelled
+  expired
+}
+
+//////////////////////////////////////////////////
+// USER
+//////////////////////////////////////////////////
 
 model User {
-  id        String    @id @default(uuid())
+  id        String   @id @default(uuid())
   name      String
-  email     String    @unique
+  email     String   @unique
   password  String
-  role      String    @default("user")
+  role      UserRole @default(user)
 
   bookings  Booking[]
+  waitlist  Waitlist[]
 
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
+
+//////////////////////////////////////////////////
+// SLOT
+//////////////////////////////////////////////////
 
 model Slot {
   id        String    @id @default(uuid())
+
   resource  String
   startTime DateTime
   endTime   DateTime
-  state     String    @default("available")
+
+  state     SlotState @default(available)
+
   isDeleted Boolean   @default(false)
+
   heldByUserId String?
   heldUntil DateTime?
 
   booking   Booking?
+  waitlist  Waitlist[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
+
+  @@index([startTime])
+  @@index([state])
 }
+
+//////////////////////////////////////////////////
+// BOOKING
+//////////////////////////////////////////////////
 
 model Booking {
   id        String   @id @default(uuid())
@@ -42,17 +83,35 @@ model Booking {
   userId    String
   slotId    String   @unique
 
+  status    BookingStatus @default(confirmed)
+
   user      User     @relation(fields: [userId], references: [id])
   slot      Slot     @relation(fields: [slotId], references: [id])
 
-  status    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+//////////////////////////////////////////////////
+// WAITLIST
+//////////////////////////////////////////////////
+
+model Waitlist {
+  id        String   @id @default(uuid())
+
+  slotId    String
+  userId    String
+
+  position  Int
+
+  slot      Slot @relation(fields: [slotId], references: [id])
+  user      User @relation(fields: [userId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@unique([slotId, userId])
+  @@index([slotId])
 }
-
-
-
-
-
-

@@ -9,7 +9,7 @@ export const signupSchema = z
 
     email: z.string().email("Invalid email format").toLowerCase(),
 
-    role: z.enum(["USER", "ADMIN"]),
+    role: z.enum(["user", "admin"]),
 
     password: z
       .string()

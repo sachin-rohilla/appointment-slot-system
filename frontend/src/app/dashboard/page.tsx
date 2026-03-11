@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiClient, Slot, Booking } from "@/lib/api";
 import { Button } from "@/components/ui/button";
+import { Toaster } from "@/components/ui/toaster";
+import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
   DialogContent,
@@ -31,12 +33,14 @@ import {
   RotateCcw,
   CalendarDays,
   User,
+  Users,
   Settings,
   ChevronLeft,
   ChevronRight,
   Timer,
   Sparkles,
   Zap,
+  ArrowRight,
   Crown,
   Gem,
   Star,
@@ -363,7 +367,11 @@ const SlotsTab = ({
                   </div>
                 </div>
                 <button
-                  onClick={handleCreateSlot}
+                  onClick={() =>
+                    handleCreateSlot(() =>
+                      setIsCreateSlotDialogOpenLocal(false),
+                    )
+                  }
                   className="w-full bg-black text-white py-3 rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors"
                 >
                   Create Slot
@@ -466,81 +474,138 @@ const SlotsTab = ({
           )}
         </div>
       ) : (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {slots.map((slot: any) => (
             <div
               key={slot.id}
-              className={`group bg-white border border-gray-200 rounded-2xl overflow-hidden hover:shadow-lg transition-all duration-300 hover:scale-102 ${selectedSlots.includes(slot.id) ? "ring-2 ring-blue-500 ring-offset-2" : slot.state === "expired" ? "opacity-75 border-orange-200" : ""}`}
+              className={`group relative bg-white border rounded-xl overflow-hidden transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 ${selectedSlots.includes(slot.id) ? "ring-2 ring-blue-500 ring-offset-2 shadow-xl border-blue-500" : slot.state === "expired" ? "border-orange-200 opacity-75" : "border-gray-200"}`}
             >
               {/* Status Badge */}
               <div className="absolute top-3 right-3 z-10">
                 <div
-                  className={`px-3 py-1 rounded-full text-xs font-medium border flex items-center gap-1.5 shadow-sm ${isSlotAvailable(slot) ? "bg-emerald-50 text-emerald-700 border-emerald-200" : slot.state === "held" ? (slot.heldByUserId === user?.id ? "bg-blue-50 text-blue-700 border-blue-200" : "bg-gray-50 text-gray-700 border-gray-200") : slot.state === "expired" ? "bg-orange-50 text-orange-700 border-orange-200" : "bg-red-50 text-red-700 border-red-200"}`}
+                  className={`px-3 py-1.5 rounded-full text-xs font-serif italic shadow-sm transition-all duration-200 ${isSlotAvailable(slot) ? "bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-emerald-500/30" : slot.state === "held" ? (slot.heldByUserId === user?.id ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-blue-500/30" : "bg-gradient-to-r from-gray-500 to-slate-600 text-white shadow-gray-500/30") : slot.state === "expired" ? "bg-gradient-to-r from-orange-500 to-amber-600 text-white shadow-orange-500/30" : "bg-gradient-to-r from-red-500 to-rose-600 text-white shadow-red-500/30"}`}
                 >
-                  <div
-                    className={`w-1.5 h-1.5 rounded-full ${isSlotAvailable(slot) ? "bg-emerald-500" : slot.state === "held" ? (slot.heldByUserId === user?.id ? "bg-blue-500" : "bg-gray-500") : slot.state === "expired" ? "bg-orange-500" : "bg-red-500"}`}
-                  />
-                  {isSlotAvailable(slot)
-                    ? "Available"
-                    : slot.state === "held"
-                      ? slot.heldByUserId === user?.id
-                        ? "Your Hold"
-                        : "On Hold"
-                      : slot.state === "expired"
-                        ? "Expired"
-                        : "Booked"}
+                  <div className="flex items-center gap-2">
+                    <div
+                      className={`w-2 h-2 rounded-full ${isSlotAvailable(slot) ? "bg-white/90" : "bg-white/90"} animate-pulse`}
+                    />
+                    <span className="font-medium tracking-wide">
+                      {isSlotAvailable(slot)
+                        ? "Available"
+                        : slot.state === "held"
+                          ? slot.heldByUserId === user?.id
+                            ? "Your Hold"
+                            : "On Hold"
+                          : slot.state === "expired"
+                            ? "Expired"
+                            : "Booked"}
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              {/* Card Header */}
-              <div className="border-b border-gray-100 px-5 py-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    {user?.role === "ADMIN" && (
-                      <button
-                        onClick={() => toggleSlotSelection(slot.id)}
-                        className="p-1.5 rounded-lg hover:bg-gray-50 transition-colors"
-                      >
-                        {selectedSlots.includes(slot.id) ? (
-                          <CheckSquare className="w-4 h-4 text-blue-600" />
-                        ) : (
-                          <Square className="w-4 h-4 text-gray-400 hover:text-gray-600" />
-                        )}
-                      </button>
+              {/* Admin Selection Checkbox */}
+              {user?.role === "ADMIN" && (
+                <div className="absolute top-3 left-3 z-10">
+                  <button
+                    onClick={() => toggleSlotSelection(slot.id)}
+                    className={`p-1.5 rounded-md transition-colors ${selectedSlots.includes(slot.id) ? "bg-blue-500 text-white" : "bg-white border border-gray-300 text-gray-400 hover:text-gray-600"}`}
+                  >
+                    {selectedSlots.includes(slot.id) ? (
+                      <CheckSquare className="w-3.5 h-3.5" />
+                    ) : (
+                      <Square className="w-3.5 h-3.5" />
                     )}
-                    <div>
-                      <div className="flex items-center gap-2 mb-2">
-                        <Calendar className="w-4 h-4 text-gray-400" />
-                        <h3 className="text-lg font-medium text-gray-900">
-                          {formatDate(slot.startTime)}
-                        </h3>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Clock className="w-3.5 h-3.5 text-gray-400" />
-                        <span className="text-sm text-gray-600">
-                          {formatTime(slot.startTime)} -{" "}
-                          {formatTime(slot.endTime)}
+                  </button>
+                </div>
+              )}
+
+              {/* Card Content */}
+              <div className="p-5">
+                {/* Date and Time */}
+                <div className="mb-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Calendar className="w-4 h-4 text-gray-400" />
+                    <h3 className="text-base font-semibold text-gray-900">
+                      {formatDate(slot.startTime)}
+                    </h3>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-gray-400" />
+                    <span className="text-sm text-gray-700">
+                      {formatTime(slot.startTime)} - {formatTime(slot.endTime)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Resource */}
+                <div className="mb-4 pb-4 border-b border-gray-100">
+                  <div className="flex items-center gap-2">
+                    <MapPin className="w-4 h-4 text-gray-400" />
+                    <span className="text-sm font-medium text-gray-900">
+                      {slot.resource}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Status Information */}
+                <div className="space-y-2">
+                  {slot.state === "held" &&
+                    slot.heldUntil &&
+                    slot.heldByUserId === user?.id && (
+                      <div className="flex items-center gap-2 text-xs font-serif italic text-amber-700 bg-amber-50/80 border border-amber-200/50 px-3 py-2 rounded-lg backdrop-blur-sm">
+                        <Timer className="w-3 h-3 text-amber-600" />
+                        <span className="tracking-wide">Hold Expires</span>
+                        <span className="ml-auto">
+                          <CountdownTimer expiryTime={slot.heldUntil} />
                         </span>
                       </div>
+                    )}
+
+                  {slot.state === "held" && slot.heldByUserId !== user?.id && (
+                    <div className="flex items-center gap-2 text-xs font-serif italic text-purple-700 bg-purple-50/80 border border-purple-200/50 px-3 py-2 rounded-lg backdrop-blur-sm">
+                      <Users className="w-3 h-3 text-purple-600" />
+                      <span className="tracking-wide">Currently Held</span>
                     </div>
-                  </div>
+                  )}
+
+                  {slot.state === "expired" && (
+                    <div className="text-xs font-serif italic text-orange-700 bg-orange-50/80 border border-orange-200/50 px-3 py-2 rounded-lg backdrop-blur-sm text-center">
+                      <span className="tracking-wide">No Longer Available</span>
+                    </div>
+                  )}
+
+                  {slot.booking?.user && (
+                    <div className="bg-gradient-to-br from-blue-50/90 to-indigo-50/80 border border-blue-200/60 rounded-lg p-3 backdrop-blur-sm">
+                      <div className="flex items-center gap-2 mb-2">
+                        <User className="w-3 h-3 text-blue-600" />
+                        <span className="text-xs font-serif italic text-blue-900 tracking-wide">
+                          Reserved
+                        </span>
+                      </div>
+                      <p className="text-xs font-serif text-blue-800 font-medium">
+                        {slot.booking.user.name}
+                      </p>
+                      <p className="text-xs font-serif text-blue-600">
+                        {slot.booking.user.email}
+                      </p>
+                    </div>
+                  )}
+
+                  {slot.heldByUserId &&
+                    !slot.booking?.user &&
+                    slot.heldByUserId !== user?.id && (
+                      <div className="text-xs font-serif italic text-purple-600 bg-purple-50/80 border border-purple-200/50 px-3 py-2 rounded-lg backdrop-blur-sm">
+                        <span className="tracking-wide">
+                          Join waiting list to be notified
+                        </span>
+                      </div>
+                    )}
                 </div>
               </div>
-              <div className="p-5">
-                {/* Resource Section */}
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="p-2 bg-gray-50 rounded-lg">
-                    <MapPin className="w-5 h-5 text-gray-600" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">
-                      Resource
-                    </p>
-                    <p className="text-base font-medium text-gray-900">
-                      {slot.resource}
-                    </p>
-                  </div>
-                </div>
+
+              {/* Action Button */}
+              <div className="px-5 pb-5">
                 {isSlotAvailable(slot) ? (
                   <Dialog
                     open={isBookingDialogOpen && selectedSlot?.id === slot.id}
@@ -549,7 +614,7 @@ const SlotsTab = ({
                     <DialogTrigger asChild>
                       <button
                         onClick={() => setSelectedSlot(slot)}
-                        className="w-full bg-emerald-600 text-white py-3 rounded-xl text-sm font-medium hover:bg-emerald-700 transition-colors flex items-center justify-center gap-2 shadow-md"
+                        className="w-full bg-emerald-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-emerald-700 transition-colors flex items-center justify-center gap-2"
                       >
                         <Calendar className="w-4 h-4" />
                         Hold Slot
@@ -711,44 +776,30 @@ const SlotsTab = ({
                       </div>
                     </DialogContent>
                   </Dialog>
+                ) : slot.state === "held" && slot.heldByUserId !== user?.id ? (
+                  <button
+                    onClick={() => {
+                      // TODO: Add waiting list functionality
+                      toast({
+                        title: "Waiting List",
+                        description:
+                          "Waiting list feature coming soon! You'll be notified when this slot becomes available.",
+                        variant: "default",
+                      });
+                    }}
+                    className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-3 rounded-xl text-sm font-medium hover:from-purple-700 hover:to-indigo-700 transition-all duration-300 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                  >
+                    <Users className="w-4 h-4" />
+                    Join Waiting List
+                  </button>
                 ) : (
-                  <div className="text-center py-4">
-                    <div
-                      className={`inline-flex items-center gap-3 px-4 py-3 rounded-lg ${slot.state === "held" ? "bg-gray-50 border border-gray-200" : slot.state === "expired" ? "bg-orange-50 border border-orange-200" : "bg-red-50 border border-red-200"}`}
-                    >
-                      <div
-                        className={`w-2 h-2 rounded-full ${slot.state === "held" ? "bg-gray-400" : slot.state === "expired" ? "bg-orange-400" : "bg-red-400"}`}
-                      />
-                      <div className="text-left">
-                        <p
-                          className={`text-sm font-medium ${slot.state === "held" ? "text-gray-700" : slot.state === "expired" ? "text-orange-700" : "text-red-700"}`}
-                        >
-                          {slot.state === "held"
-                            ? "On Hold"
-                            : slot.state === "expired"
-                              ? "Expired"
-                              : "Booked"}
-                        </p>
-                        {slot.state === "held" && slot.heldUntil && (
-                          <p className="text-xs mt-1 text-gray-600 flex items-center gap-1">
-                            <Timer className="w-3 h-3" />
-                            Expires:{" "}
-                            <CountdownTimer expiryTime={slot.heldUntil} />
-                          </p>
-                        )}
-                        {slot.state === "expired" && (
-                          <p className="text-xs mt-1 text-orange-600">
-                            This slot has expired
-                          </p>
-                        )}
-                        {slot.heldByUserId && (
-                          <p
-                            className={`text-xs mt-1 ${slot.state === "held" ? "text-gray-600" : slot.state === "expired" ? "text-orange-600" : "text-red-600"}`}
-                          >
-                            {slot.heldByUserId}
-                          </p>
-                        )}
-                      </div>
+                  <div className="text-center py-3 opacity-60">
+                    <div className="text-gray-400 text-sm font-serif italic">
+                      {slot.state === "held"
+                        ? "Currently Held"
+                        : slot.state === "expired"
+                          ? "No Longer Available"
+                          : "Reserved"}
                     </div>
                   </div>
                 )}
@@ -861,33 +912,53 @@ const AdminTab = ({
     <div className="space-y-8">
       {deletedSlots.length > 0 ? (
         <div className="mt-16 pt-8 border-t border-gray-200">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <h2 className="text-2xl font-light text-gray-900">
-                Recently Deleted Slots
-              </h2>
-              <span className="px-3 py-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-full text-sm font-medium">
-                {deletedSlots.length} deleted
-              </span>
-              {selectedDeletedSlots.length > 0 && (
-                <span className="px-3 py-1 bg-green-50 text-green-700 border border-green-200 rounded-full text-sm font-medium">
-                  {selectedDeletedSlots.length} selected for restore
-                </span>
-              )}
+          {/* Header Section */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3 bg-gradient-to-r from-amber-50 to-orange-50 px-6 py-3 rounded-xl border border-amber-200 shadow-sm">
+                  <div className="p-2 bg-amber-100 rounded-lg">
+                    <Archive className="w-6 h-6 text-amber-600" />
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-serif text-gray-900 font-light">
+                      Archive Management
+                    </h2>
+                    <p className="text-sm text-amber-700 font-medium">
+                      Manage deleted slots
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="px-4 py-2 bg-amber-500 text-white rounded-full text-sm font-semibold shadow-lg">
+                    {deletedSlots.length}
+                  </span>
+                  <span className="text-sm text-gray-500 font-medium">
+                    total
+                  </span>
+                  {selectedDeletedSlots.length > 0 && (
+                    <span className="px-4 py-2 bg-green-500 text-white rounded-full text-sm font-semibold shadow-lg animate-pulse">
+                      {selectedDeletedSlots.length} selected
+                    </span>
+                  )}
+                </div>
+              </div>
             </div>
+
+            {/* Action Buttons */}
             <div className="flex items-center gap-3">
               {selectedDeletedSlots.length > 0 && (
                 <>
                   <button
                     onClick={() => setShowRestoreConfirm(true)}
-                    className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-full text-sm font-medium hover:bg-green-700 transition-colors shadow-lg hover:shadow-xl"
+                    className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl text-sm font-semibold hover:from-green-600 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
                   >
-                    <RotateCcw className="w-4 h-4" />
+                    <RotateCcw className="w-5 h-5" />
                     Restore Selected ({selectedDeletedSlots.length})
                   </button>
                   <button
                     onClick={() => setSelectedDeletedSlots([])}
-                    className="px-4 py-2 border border-gray-300 rounded-full text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                    className="px-6 py-3 border border-gray-300 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-all duration-300"
                   >
                     Clear Selection
                   </button>
@@ -895,109 +966,144 @@ const AdminTab = ({
               )}
               <button
                 onClick={() => setShowDeletedSlots(!showDeletedSlots)}
-                className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-full text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                className="flex items-center gap-2 px-6 py-3 border border-gray-300 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-all duration-300"
               >
-                <Archive className="w-4 h-4" />
-                {showDeletedSlots ? "Hide" : "Show"} Deleted
+                <Archive className="w-5 h-5" />
+                {showDeletedSlots ? "Hide Archive" : "Show Archive"}
               </button>
             </div>
           </div>
 
+          {/* Archive Section */}
           {showDeletedSlots && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between p-4 bg-amber-50 rounded-lg border border-amber-200">
+            <div className="space-y-6">
+              {/* Selection Controls */}
+              <div className="flex items-center justify-between p-5 bg-gradient-to-r from-amber-50/80 to-orange-50/80 rounded-xl border border-amber-200/60 backdrop-blur-sm">
                 <div className="flex items-center gap-3">
                   <button
                     onClick={toggleAllDeletedSlotsSelection}
-                    className="flex items-center gap-2 text-sm font-medium text-amber-700 hover:text-amber-900 transition-colors"
+                    className="flex items-center gap-3 px-4 py-3 bg-white rounded-lg text-sm font-serif font-medium text-amber-700 hover:bg-amber-50 transition-all duration-300 shadow-sm"
                   >
                     {selectedDeletedSlots.length === deletedSlots.length ? (
                       <CheckSquare className="w-5 h-5 text-green-600" />
                     ) : (
                       <Square className="w-5 h-5 text-amber-400" />
                     )}
-                    Select All Deleted ({deletedSlots.length})
+                    <span className="tracking-wide">
+                      {selectedDeletedSlots.length === deletedSlots.length
+                        ? "Deselect All"
+                        : "Select All"}{" "}
+                      ({deletedSlots.length})
+                    </span>
                   </button>
                   {selectedDeletedSlots.length > 0 && (
-                    <span className="text-sm text-amber-600">
+                    <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-serif font-medium">
                       {selectedDeletedSlots.length} of {deletedSlots.length}{" "}
                       selected
                     </span>
                   )}
                 </div>
-                <div className="text-xs text-amber-600">
-                  Select slots to restore them
+                <div className="text-xs font-serif italic text-amber-600">
+                  Select archived slots to restore them to active status
                 </div>
               </div>
 
+              {/* Loading State */}
               {deletedSlotsLoading ? (
-                <div className="flex flex-col items-center justify-center py-12">
-                  <div className="w-6 h-6 border-2 border-gray-300 border-t-transparent rounded-full animate-spin mb-3"></div>
-                  <p className="text-gray-500 text-sm font-light">
-                    Loading deleted slots...
+                <div className="flex flex-col items-center justify-center py-16">
+                  <div className="w-8 h-8 border-3 border-amber-300 border-t-transparent rounded-full animate-spin mb-4"></div>
+                  <p className="text-amber-600 text-sm font-serif font-light">
+                    Loading archived slots...
                   </p>
                 </div>
               ) : (
-                <div className="grid gap-4">
+                <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
                   {deletedSlots.map((slot: any) => (
                     <div
                       key={slot.id}
-                      className={`bg-amber-50 border border-amber-200 rounded-xl p-4 opacity-75 ${selectedDeletedSlots.includes(slot.id) ? "ring-2 ring-green-500 ring-offset-2" : ""}`}
+                      className={`group relative bg-white border-2 rounded-xl overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${selectedDeletedSlots.includes(slot.id) ? "border-green-500 ring-2 ring-green-200 shadow-lg" : "border-amber-200"}`}
                     >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                          <button
-                            onClick={() => toggleDeletedSlotSelection(slot.id)}
-                            className="flex-shrink-0"
-                          >
-                            {selectedDeletedSlots.includes(slot.id) ? (
-                              <CheckSquare className="w-5 h-5 text-green-600" />
-                            ) : (
-                              <Square className="w-5 h-5 text-amber-400 hover:text-amber-600 transition-colors" />
-                            )}
-                          </button>
-                          <div className="p-2 bg-amber-100 rounded-lg">
-                            <Archive className="w-5 h-5 text-amber-600" />
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-3 mb-1">
-                              <span className="text-sm font-medium text-gray-900">
-                                {formatDate(slot.startTime)}
-                              </span>
-                              <span className="text-sm text-gray-600">
-                                {formatTime(slot.startTime)} -{" "}
-                                {formatTime(slot.endTime)}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs text-gray-500">
-                                Resource:
-                              </span>
-                              <span className="text-xs font-medium text-gray-700">
-                                {slot.resource}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-2 mt-1">
-                              <span className="text-xs text-amber-600">
-                                Deleted on:
-                              </span>
-                              <span className="text-xs text-amber-700">
-                                {new Date(slot.updatedAt).toLocaleDateString()}{" "}
-                                at{" "}
-                                {new Date(slot.updatedAt).toLocaleTimeString()}
-                              </span>
-                            </div>
+                      {/* Selection Checkbox */}
+                      <div className="absolute top-3 left-3 z-10">
+                        <button
+                          onClick={() => toggleDeletedSlotSelection(slot.id)}
+                          className={`p-2 rounded-lg transition-all duration-200 ${selectedDeletedSlots.includes(slot.id) ? "bg-green-500 text-white" : "bg-white border border-gray-300 text-gray-400 hover:text-amber-600"}`}
+                        >
+                          {selectedDeletedSlots.includes(slot.id) ? (
+                            <CheckSquare className="w-4 h-4" />
+                          ) : (
+                            <Square className="w-4 h-4" />
+                          )}
+                        </button>
+                      </div>
+
+                      {/* Status Badge */}
+                      <div className="absolute top-3 right-3 z-10">
+                        <div className="px-3 py-1.5 bg-gradient-to-r from-red-500 to-rose-600 text-white rounded-full text-xs font-serif italic shadow-lg">
+                          <div className="flex items-center gap-2">
+                            <div className="w-1.5 h-1.5 rounded-full bg-white/90 animate-pulse" />
+                            <span className="font-medium tracking-wide">
+                              Archived
+                            </span>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <span className="px-2 py-1 bg-red-100 text-red-700 border border-red-200 rounded-full text-xs font-medium">
-                            Soft Deleted
-                          </span>
+                      </div>
+
+                      {/* Card Content */}
+                      <div className="p-5">
+                        {/* Header */}
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center gap-2">
+                            <div className="p-2 bg-amber-100 rounded-lg">
+                              <Archive className="w-4 h-4 text-amber-600" />
+                            </div>
+                            <span className="px-2 py-1 bg-amber-50 text-amber-800 rounded-full text-xs font-serif font-medium">
+                              Deleted
+                            </span>
+                          </div>
                           {selectedDeletedSlots.includes(slot.id) && (
-                            <span className="px-2 py-1 bg-green-100 text-green-700 border border-green-200 rounded-full text-xs font-medium">
-                              Will Restore
+                            <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-serif font-medium">
+                              ✓ Selected
                             </span>
                           )}
+                        </div>
+
+                        {/* Slot Details */}
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-3">
+                            <Calendar className="w-4 h-4 text-amber-500" />
+                            <span className="text-sm font-serif text-gray-900">
+                              {formatDate(slot.startTime)}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <Clock className="w-4 h-4 text-amber-500" />
+                            <span className="text-sm text-gray-600">
+                              {formatTime(slot.startTime)} -{" "}
+                              {formatTime(slot.endTime)}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <MapPin className="w-4 h-4 text-amber-500" />
+                            <span className="text-sm font-serif text-gray-900">
+                              {slot.resource}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Footer */}
+                        <div className="mt-4 pt-3 border-t border-amber-200">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-serif italic text-amber-600">
+                              Archived {formatDate(slot.updatedAt)}
+                            </span>
+                            <div className="flex items-center gap-1">
+                              <div className="w-2 h-2 bg-amber-400 rounded-full animate-pulse" />
+                              <span className="text-xs font-serif text-amber-700">
+                                Ready to restore
+                              </span>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -1008,15 +1114,15 @@ const AdminTab = ({
           )}
         </div>
       ) : (
-        <div className="text-center py-20">
-          <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+        <div className="text-center py-16">
+          <div className="w-20 h-20 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center mx-auto mb-6">
             <Archive className="w-10 h-10 text-gray-400" />
           </div>
-          <h3 className="text-xl font-light text-gray-900 mb-3">
-            No recently deleted files
+          <h3 className="text-2xl font-serif text-gray-900 mb-4">
+            No Archived Slots
           </h3>
-          <p className="text-gray-600 mb-6 font-light">
-            No slots have been deleted yet
+          <p className="text-gray-600 text-lg font-light">
+            Deleted slots will appear here for restoration
           </p>
         </div>
       )}
@@ -1089,6 +1195,7 @@ const RestoreConfirmDialog = ({
 
 export default function DashboardPage() {
   const { user, isAuthenticated, isLoading } = useAuth();
+  const { toast } = useToast();
   const [slots, setSlots] = useState<Slot[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(true);
   const [slotsPagination, setSlotsPagination] = useState({
@@ -1249,6 +1356,12 @@ export default function DashboardPage() {
         setSuccess("Slot held successfully! You can now book it.");
         setError("");
         fetchSlots(); // Refresh slots to show updated state
+        // Show success toast
+        toast({
+          title: "Success!",
+          description: "Slot held successfully! You can now book it.",
+          variant: "success",
+        });
         setTimeout(() => setSuccess(""), 5000); // Show success for 5 seconds
 
         // Set up auto-refresh when hold is about to expire
@@ -1272,11 +1385,24 @@ export default function DashboardPage() {
       } else {
         setError(response.error || "Failed to hold slot");
         setSuccess("");
+        // Show error toast
+        toast({
+          title: "Error!",
+          description: response.error || "Failed to hold slot",
+          variant: "destructive",
+        });
       }
     } catch (error: unknown) {
       console.error("Hold slot error:", error);
       setError(error instanceof Error ? error.message : "Failed to hold slot");
       setSuccess("");
+      // Show error toast
+      toast({
+        title: "Error!",
+        description:
+          error instanceof Error ? error.message : "Failed to hold slot",
+        variant: "destructive",
+      });
     }
   };
 
@@ -1323,20 +1449,36 @@ export default function DashboardPage() {
         setError("");
         fetchSlots(); // Refresh slots
         fetchBookings(); // Refresh bookings
+        // Show success toast
+        toast({
+          title: "Success!",
+          description: "Booking created successfully!",
+          variant: "success",
+        });
         setTimeout(() => setSuccess(""), 5000); // Show success for 5 seconds
       } else {
-        // Handle specific booking errors
+        // Always show the actual API response first
+        const errorMessage = response.error || "Failed to create booking";
+
+        // Set the error message
+        setError(errorMessage);
+
+        // Show error toast with the actual API response
+        toast({
+          title: "Error!",
+          description: errorMessage,
+          variant: "destructive",
+        });
+
+        // Only refresh slots for specific errors
         if (
-          response.error?.includes("hold") ||
-          response.error?.includes("expired")
+          errorMessage?.includes("hold") ||
+          errorMessage?.includes("expired") ||
+          errorMessage?.includes("booking")
         ) {
-          setError(
-            "Hold has expired or slot is no longer available. Please try holding the slot again.",
-          );
           fetchSlots(); // Refresh to show current state
-        } else {
-          setError(response.error || "Failed to create booking");
         }
+
         setSuccess("");
       }
     } catch (error: unknown) {
@@ -1350,8 +1492,21 @@ export default function DashboardPage() {
           "Hold has expired or slot is no longer available. Please try holding the slot again.",
         );
         fetchSlots(); // Refresh to show current state
+        // Show error toast
+        toast({
+          title: "Hold Expired!",
+          description:
+            "Hold has expired or slot is no longer available. Please try holding the slot again.",
+          variant: "destructive",
+        });
       } else {
         setError(errorMessage);
+        // Show error toast
+        toast({
+          title: "Error!",
+          description: errorMessage,
+          variant: "destructive",
+        });
       }
       setSuccess("");
     }
@@ -1366,21 +1521,45 @@ export default function DashboardPage() {
         setError("");
         fetchSlots(); // Refresh slots
         fetchBookings(); // Refresh bookings
+        // Show success toast
+        toast({
+          title: "Success!",
+          description: "Booking cancelled successfully!",
+          variant: "success",
+        });
         setTimeout(() => setSuccess(""), 5000); // Show success for 5 seconds
       } else {
         setError(response.error || "Failed to cancel booking");
         setSuccess("");
+        // Show error toast
+        toast({
+          title: "Error!",
+          description: response.error || "Failed to cancel booking",
+          variant: "destructive",
+        });
       }
     } catch (error: unknown) {
       setError(
         error instanceof Error ? error.message : "Failed to cancel booking",
       );
       setSuccess("");
+      // Show error toast
+      toast({
+        title: "Error!",
+        description:
+          error instanceof Error ? error.message : "Failed to cancel booking",
+        variant: "destructive",
+      });
     }
   };
 
-  const handleCreateSlot = async () => {
+  const handleCreateSlot = async (onCloseDialog?: () => void) => {
     try {
+      if (!newSlot.date || !newSlot.startTime || !newSlot.endTime) {
+        setError("Please fill in all required fields");
+        return;
+      }
+
       // Convert date and time to ISO datetime format
       const startDateTime = new Date(`${newSlot.date}T${newSlot.startTime}:00`);
       const endDateTime = new Date(`${newSlot.date}T${newSlot.endTime}:00`);
@@ -1397,15 +1576,28 @@ export default function DashboardPage() {
 
       if (response.success) {
         setIsCreateSlotDialogOpen(false);
+        if (onCloseDialog) onCloseDialog(); // Close the local dialog
         setNewSlot({ resource: "", date: "", startTime: "", endTime: "" });
         setSuccess("Slot created successfully!");
         setError("");
         fetchSlots(); // Refresh slots
+        // Show success toast
+        toast({
+          title: "Success!",
+          description: "Slot created successfully!",
+          variant: "success",
+        });
         // Clear success message after 3 seconds
         setTimeout(() => setSuccess(""), 5000); // Show success for 5 seconds
       } else {
         setError(response.error || "Failed to create slot");
         setSuccess("");
+        // Show error toast
+        toast({
+          title: "Error!",
+          description: response.error || "Failed to create slot",
+          variant: "destructive",
+        });
       }
     } catch (error: unknown) {
       setError(
@@ -1413,6 +1605,13 @@ export default function DashboardPage() {
       );
       setSuccess("");
       console.error("Failed to create slot:", error);
+      // Show error toast
+      toast({
+        title: "Error!",
+        description:
+          error instanceof Error ? error.message : "Failed to create slot",
+        variant: "destructive",
+      });
     }
   };
 
@@ -1430,16 +1629,35 @@ export default function DashboardPage() {
         setShowDeleteConfirm(false);
         fetchSlots(); // Refresh slots
         fetchDeletedSlots(); // Refresh deleted slots
+        // Show success toast
+        toast({
+          title: "Success!",
+          description: `Successfully deleted ${selectedSlots.length} slot(s)`,
+          variant: "success",
+        });
         setTimeout(() => setSuccess(""), 5000); // Show success for 5 seconds
       } else {
         setError(response.error || "Failed to delete slots");
         setSuccess("");
+        // Show error toast
+        toast({
+          title: "Error!",
+          description: response.error || "Failed to delete slots",
+          variant: "destructive",
+        });
       }
     } catch (error: unknown) {
       setError(
         error instanceof Error ? error.message : "Failed to delete slots",
       );
       setSuccess("");
+      // Show error toast
+      toast({
+        title: "Error!",
+        description:
+          error instanceof Error ? error.message : "Failed to delete slots",
+        variant: "destructive",
+      });
     } finally {
       setIsDeleting(false);
     }
@@ -1493,16 +1711,35 @@ export default function DashboardPage() {
         setShowRestoreConfirm(false);
         fetchSlots(); // Refresh active slots
         fetchDeletedSlots(); // Refresh deleted slots
+        // Show success toast
+        toast({
+          title: "Success!",
+          description: `Successfully restored ${selectedDeletedSlots.length} slot(s)`,
+          variant: "success",
+        });
         setTimeout(() => setSuccess(""), 5000); // Show success for 5 seconds
       } else {
         setError(response.error || "Failed to restore slots");
         setSuccess("");
+        // Show error toast
+        toast({
+          title: "Error!",
+          description: response.error || "Failed to restore slots",
+          variant: "destructive",
+        });
       }
     } catch (error: unknown) {
       setError(
         error instanceof Error ? error.message : "Failed to restore slots",
       );
       setSuccess("");
+      // Show error toast
+      toast({
+        title: "Error!",
+        description:
+          error instanceof Error ? error.message : "Failed to restore slots",
+        variant: "destructive",
+      });
     } finally {
       setIsRestoring(false);
     }
@@ -1789,6 +2026,9 @@ export default function DashboardPage() {
         isRestoring={isRestoring}
         handleRestoreSlots={handleRestoreSlots}
       />
+
+      {/* Toast Notifications */}
+      <Toaster />
     </div>
   );
 }

@@ -7,7 +7,7 @@ interface ISignUpService {
   name: string;
   email: string;
   password: string;
-  role: "USER" | "ADMIN";
+  role: "user" | "admin";
 }
 
 interface ISignInService {

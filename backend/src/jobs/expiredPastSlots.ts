@@ -9,10 +9,10 @@ export const expiredPastSlots = async () => {
     const result = await prisma.slot.updateMany({
       where: {
         endTime: { lt: now },
-        state: { in: ["available", "held", "hold"] },
+        state: { in: ["available", "held"] },
       },
       data: {
-        state: "expired",
+        state: "available",
         heldByUserId: null,
         heldUntil: null,
       },

@@ -131,7 +131,17 @@ class ApiClient {
       page: page.toString(),
       limit: limit.toString(),
     });
-    return this.request(`/slots/deleted-list?${params}`);
+    const response = (await this.request(
+      `/slots/deleted-list?${params}`,
+    )) as any;
+    // Handle nested data structure
+    if (response.data?.data) {
+      return {
+        ...response,
+        data: response.data.data,
+      };
+    }
+    return response;
   }
 
   async createSlot(

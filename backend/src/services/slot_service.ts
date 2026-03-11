@@ -53,6 +53,21 @@ export const getAllSlotsService = async (page: number, limit: number) => {
       take: limit,
       skip,
       orderBy: { createdAt: "desc" },
+      include: {
+        booking: {
+          where: {
+            status: "confirmed",
+          },
+          select: {
+            user: {
+              select: {
+                name: true,
+                email: true,
+              },
+            },
+          },
+        },
+      },
     }),
     prisma.slot.count({
       where: filter,
