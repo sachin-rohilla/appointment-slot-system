@@ -1,220 +1,59 @@
-const API_BASE_URL = "http://localhost:5000/api/v1";
+import axios from "axios";
 
-export interface PaginatedApiResponse<T = any> {
-  success: boolean;
-  data?: T[];
-  page?: number;
-  limit?: number;
-  totalCount?: number;
-  totalPages?: number;
-  message?: string;
-  error?: string;
-}
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/v1";
 
-export interface ApiResponse<T = any> {
-  success: boolean;
-  data?: T;
-  message?: string;
-  error?: string;
-}
+export const api = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    "Content-Type": "application/json",
+  },
+  withCredentials: true,
+});
 
-export interface LoginCredentials {
-  email: string;
-  password: string;
-}
-
-export interface SignupCredentials {
-  name: string;
-  email: string;
-  password: string;
-  confirmPassword: string;
-  role?: "USER" | "ADMIN";
-}
-
-export interface Slot {
-  id: string;
-  resource: string;
-  startTime: string;
-  endTime: string;
-  state: "available" | "held" | "booked";
-  heldByUserId: string | null;
-  heldUntil: string | null;
-  createdAt: string;
-  updatedAt: string;
-  waitlist?: Array<{
-    userId: string;
-    slotId: string;
-    position: number;
-  }>;
-}
-
-export interface Booking {
-  id: string;
-  slotId: string;
-  userId: string;
-  status: "pending" | "confirmed" | "cancelled";
-  createdAt: string;
-}
-
-class ApiClient {
-  private getAuthHeaders(): HeadersInit {
-    const token =
-      typeof window !== "undefined" ? localStorage.getItem("token") : null;
-    console.log("Token from localStorage:", token); // Debug log
-    return {
-      "Content-Type": "application/json",
-      ...(token &&
-        token !== "undefined" && { Authorization: `Bearer ${token}` }),
-    };
-  }
-
-  async request<T>(
-    endpoint: string,
-    options: RequestInit = {},
-  ): Promise<ApiResponse<T>> {
-    try {
-      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-        ...options,
-        headers: {
-          ...this.getAuthHeaders(),
-          ...options.headers,
-        },
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Request failed");
-      }
-
-      return data;
-    } catch (error) {
-      console.error("API Error:", error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
-      };
+// Request interceptor to add auth token
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
-  }
+    return config;
+  },
+  (error) => Promise.reject(error),
+);
 
-  // Auth endpoints
-  async login(
-    credentials: LoginCredentials,
-  ): Promise<ApiResponse<{ token: string; user: any }>> {
-    return this.request("/auth/sign-in", {
-      method: "POST",
-      body: JSON.stringify(credentials),
-    });
-  }
-
-  async signup(
-    credentials: SignupCredentials,
-  ): Promise<ApiResponse<{ token: string; user: any }>> {
-    return this.request("/auth/sign-up", {
-      method: "POST",
-      body: JSON.stringify(credentials),
-    });
-  }
-
-  // Slot endpoints
-  async getAllSlots(
-    page: number = 1,
-    limit: number = 10,
-  ): Promise<PaginatedApiResponse<Slot>> {
-    const params = new URLSearchParams({
-      page: page.toString(),
-      limit: limit.toString(),
-    });
-    return this.request(`/slots/all-list?${params}`);
-  }
-
-  async getDeletedSlots(
-    page: number = 1,
-    limit: number = 10,
-  ): Promise<PaginatedApiResponse<Slot>> {
-    const params = new URLSearchParams({
-      page: page.toString(),
-      limit: limit.toString(),
-    });
-    const response = (await this.request(
-      `/slots/deleted-list?${params}`,
-    )) as any;
-    // Handle nested data structure
-    if (response.data?.data) {
-      return {
-        ...response,
-        data: response.data.data,
-      };
+// Response interceptor to handle errors
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      window.location.href = "/auth/login";
     }
-    return response;
-  }
+    return Promise.reject(error);
+  },
+);
 
-  async createSlot(
-    slotData: Omit<
-      Slot,
-      "id" | "createdAt" | "updatedAt" | "state" | "heldByUserId" | "heldUntil"
-    >,
-  ): Promise<ApiResponse<Slot>> {
-    return this.request("/slots/create", {
-      method: "POST",
-      body: JSON.stringify(slotData),
-    });
-  }
+// Auth API
+export const authAPI = {
+  signUp: (data: {
+    name: string;
+    email: string;
+    password: string;
+    role?: string;
+  }) => api.post("/auth/sign-up", data),
+  signIn: (data: { email: string; password: string }) =>
+    api.post("/auth/sign-in", data),
+};
 
-  async deleteSlots(slotIds: string[]): Promise<ApiResponse> {
-    return this.request("/slots/delete", {
-      method: "DELETE",
-      body: JSON.stringify({ slotIds }),
-    });
-  }
-
-  async restoreSlots(slotIds: string[]): Promise<ApiResponse> {
-    return this.request("/slots/restore", {
-      method: "PATCH",
-      body: JSON.stringify({ slotIds }),
-    });
-  }
-
-  async holdSlot(slotId: string): Promise<ApiResponse<Slot>> {
-    return this.request(`/slots/hold/${slotId}`, {
-      method: "PATCH",
-    });
-  }
-
-  // Booking endpoints
-  async createBooking({
-    slotId,
-  }: {
-    slotId: string;
-  }): Promise<ApiResponse<Booking>> {
-    return this.request("/bookings/create", {
-      method: "POST",
-      body: JSON.stringify({ slotId }),
-    });
-  }
-
-  async cancelBooking(bookingId: string): Promise<ApiResponse> {
-    return this.request(`/bookings/cancel/${bookingId}`, {
-      method: "PATCH",
-    });
-  }
-
-  async getUserBookings(): Promise<ApiResponse<Booking[]>> {
-    return this.request("/bookings/user");
-  }
-
-  // Waitlist endpoints
-  async joinWaitlist(slotId: string): Promise<ApiResponse> {
-    return this.request("/waitlist/create", {
-      method: "POST",
-      body: JSON.stringify({ slotId }),
-    });
-  }
-
-  // Health check
-  async healthCheck(): Promise<ApiResponse> {
-    return this.request("/health");
-  }
-}
-
-export const apiClient = new ApiClient();
+// Slots API
+export const slotsAPI = {
+  createSlot: (data: {
+    resource: string;
+    startTime: string;
+    endTime: string;
+  }) => api.post("/slots/create", data),
+  getAllSlots: () => api.get("/slots/all-slot-list"),
+};

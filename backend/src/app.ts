@@ -6,9 +6,6 @@ import { notFoundMiddleware } from "./middlewares/not_found_middleware";
 import { errorMiddleware } from "./middlewares/error_middleware";
 import authRouter from "./routes/auth_route";
 import slotRouter from "./routes/slot_route";
-import bookingRouter from "./routes/booking_route";
-import "./jobs/cron";
-import waitListRouter from "./routes/waitlist_route";
 
 dotenv.config();
 
@@ -24,9 +21,6 @@ app.use(express.json());
 app.use("/api/v1/health", healthCheckRouter);
 app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/slots", slotRouter);
-app.use("/api/v1/bookings", bookingRouter);
-app.use("/api/v1/waitlist", waitListRouter);
-
 app.use(notFoundMiddleware);
 app.use(errorMiddleware);
 export default app;

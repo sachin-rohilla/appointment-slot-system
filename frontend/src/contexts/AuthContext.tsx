@@ -1,28 +1,21 @@
 "use client";
 
-import React, {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-  ReactNode,
-} from "react";
-import { apiClient, LoginCredentials, SignupCredentials } from "@/lib/api";
-
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: "USER" | "ADMIN";
-}
+import React, { createContext, useContext, useEffect, useState } from "react";
+import { User } from "@/types";
+import { authAPI } from "@/lib/api";
+import toast from "react-hot-toast";
 
 interface AuthContextType {
   user: User | null;
-  token: string | null;
-  login: (credentials: LoginCredentials) => Promise<boolean>;
-  signup: (credentials: SignupCredentials) => Promise<boolean>;
-  logout: () => void;
   isLoading: boolean;
+  login: (email: string, password: string) => Promise<void>;
+  register: (
+    name: string,
+    email: string,
+    password: string,
+    role?: string,
+  ) => Promise<void>;
+  logout: () => void;
   isAuthenticated: boolean;
 }
 
@@ -36,89 +29,86 @@ export const useAuth = () => {
   return context;
 };
 
-interface AuthProviderProps {
-  children: ReactNode;
-}
-
-export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
   const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const storedToken = localStorage.getItem("token");
-    const storedUser = localStorage.getItem("user");
+    const initializeAuth = () => {
+      const token = localStorage.getItem("token");
+      const userData = localStorage.getItem("user");
 
-    if (storedToken && storedUser && storedUser !== "undefined") {
-      try {
-        const parsedUser = JSON.parse(storedUser);
-        setToken(storedToken);
-        setUser(parsedUser);
-      } catch (error) {
-        console.error("Failed to parse stored user data:", error);
-        // Clear invalid data
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
+      if (token && userData) {
+        try {
+          const parsedUser = JSON.parse(userData);
+          setUser(parsedUser);
+        } catch {
+          localStorage.removeItem("token");
+          localStorage.removeItem("user");
+        }
       }
-    }
-    setIsLoading(false);
+      setIsLoading(false);
+    };
+
+    initializeAuth();
   }, []);
 
-  const login = async (credentials: LoginCredentials): Promise<boolean> => {
+  const login = async (email: string, password: string) => {
     try {
-      const response = await apiClient.login(credentials);
+      const response = await authAPI.signIn({ email, password });
+      const { user: userData, token } = response.data.data;
 
-      if (response.success && response.data) {
-        const { token: newToken, user: userData } = response.data;
-        setToken(newToken);
-        setUser(userData);
-        localStorage.setItem("token", newToken);
-        localStorage.setItem("user", JSON.stringify(userData));
-        return true;
-      }
-      return false;
-    } catch (error) {
-      console.error("Login error:", error);
-      return false;
+      localStorage.setItem("token", token);
+      localStorage.setItem("user", JSON.stringify(userData));
+      setUser(userData);
+
+      toast.success("Welcome back!");
+    } catch (error: unknown) {
+      const message = (error as any).response?.data?.message || "Login failed";
+      toast.error(message);
+      throw error;
     }
   };
 
-  const signup = async (credentials: SignupCredentials): Promise<boolean> => {
+  const register = async (
+    name: string,
+    email: string,
+    password: string,
+    role?: string,
+  ) => {
     try {
-      const response = await apiClient.signup(credentials);
+      const response = await authAPI.signUp({ name, email, password, role });
+      const { user: userData, token } = response.data.data;
 
-      if (response.success && response.data) {
-        const { token: newToken, user: userData } = response.data;
-        console.log("Storing token:", newToken); // Debug log
-        console.log("Storing user:", userData); // Debug log
-        setToken(newToken);
-        setUser(userData);
-        localStorage.setItem("token", newToken);
-        localStorage.setItem("user", JSON.stringify(userData));
-        return true;
-      }
-      return false;
-    } catch (error) {
-      console.error("Signup error:", error);
-      return false;
+      localStorage.setItem("token", token);
+      localStorage.setItem("user", JSON.stringify(userData));
+      setUser(userData);
+
+      toast.success("Account created successfully!");
+    } catch (error: unknown) {
+      const message =
+        (error as any).response?.data?.message || "Registration failed";
+      toast.error(message);
+      throw error;
     }
   };
 
   const logout = () => {
-    setUser(null);
-    setToken(null);
     localStorage.removeItem("token");
     localStorage.removeItem("user");
+    setUser(null);
+    toast.success("Logged out successfully");
   };
 
   const value: AuthContextType = {
     user,
-    token,
-    login,
-    signup,
-    logout,
     isLoading,
-    isAuthenticated: !!user && !!token,
+    login,
+    register,
+    logout,
+    isAuthenticated: !!user,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
