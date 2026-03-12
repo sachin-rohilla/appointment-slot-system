@@ -242,37 +242,16 @@ export default function DashboardPage() {
             <div className="space-y-4">
               <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                 <div className="flex items-center gap-3">
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
                   <div>
-                    <p className="text-sm font-medium">New slot created</p>
-                    <p className="text-xs text-gray-500">Dr. Smith - 2:00 PM</p>
-                  </div>
-                </div>
-                <Badge variant="secondary">Just now</Badge>
-              </div>
-
-              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                  <div>
-                    <p className="text-sm font-medium">Appointment booked</p>
-                    <p className="text-xs text-gray-500">John Doe - 3:30 PM</p>
-                  </div>
-                </div>
-                <Badge variant="secondary">5m ago</Badge>
-              </div>
-
-              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                  <div>
-                    <p className="text-sm font-medium">Slot released</p>
-                    <p className="text-xs text-gray-500">
-                      Dr. Johnson - 4:00 PM
+                    <p className="text-sm font-medium text-gray-600">
+                      No recent activity
+                    </p>
+                    <p className="text-xs text-gray-400">
+                      Activity will appear here
                     </p>
                   </div>
                 </div>
-                <Badge variant="secondary">1h ago</Badge>
               </div>
             </div>
           </CardContent>

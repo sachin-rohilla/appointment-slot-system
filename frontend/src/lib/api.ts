@@ -56,4 +56,5 @@ export const slotsAPI = {
     endTime: string;
   }) => api.post("/slots/create", data),
   getAllSlots: () => api.get("/slots/all-slot-list"),
+  updateSlot: (slotId: string) => api.patch(`/slots/update/${slotId}`),
 };

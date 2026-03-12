@@ -4,6 +4,7 @@ import { authorizeMiddleware } from "../middlewares/authorize_middleware";
 import {
   createSlotController,
   getSlotController,
+  updateSlotController,
 } from "../controllers/slot_controller";
 
 const slotRouter = Router();
@@ -16,5 +17,7 @@ slotRouter.post(
 );
 
 slotRouter.get("/all-slot-list", authMiddleware, getSlotController);
+
+slotRouter.patch("/update/:slotId", authMiddleware, updateSlotController);
 
 export default slotRouter;
