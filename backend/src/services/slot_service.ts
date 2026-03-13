@@ -54,7 +54,11 @@ export const createSlotService = async (payload: CreateSlotPayload) => {
 };
 
 export const getSlotService = () => {
-  return prisma.slot.findMany();
+  return prisma.slot.findMany({
+    where: {
+      isDeleted: false,
+    },
+  });
 };
 
 export const updateSlotService = async (userId: string, slotId: string) => {
@@ -86,4 +90,19 @@ export const updateSlotService = async (userId: string, slotId: string) => {
   }
 
   return updatedSlots;
+};
+
+export const deleteSlotService = async (slotIds: string[]) => {
+  const deletedData = await prisma.slot.updateMany({
+    where: {
+      id: {
+        in: slotIds,
+      },
+      isDeleted: false,
+    },
+    data: {
+      isDeleted: true,
+    },
+  });
+  return deletedData;
 };

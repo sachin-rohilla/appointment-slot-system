@@ -26,6 +26,8 @@ import {
   Edit,
   Trash2,
   Users,
+  CheckSquare,
+  Square,
 } from "lucide-react";
 import Link from "next/link";
 import toast from "react-hot-toast";
@@ -38,6 +40,8 @@ export default function AdminSlotsPage() {
   const [filteredSlots, setFilteredSlots] = useState<Slot[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedSlots, setSelectedSlots] = useState<string[]>([]);
+  const [deleting, setDeleting] = useState(false);
   const [filters, setFilters] = useState({
     resource: "",
     state: "",
@@ -124,7 +128,8 @@ export default function AdminSlotsPage() {
     }
 
     try {
-      // await slotsAPI.deleteSlot(slotId);
+      setDeleting(true);
+      await slotsAPI.deleteSlots([slotId]);
       toast.success("Slot deleted successfully!");
       fetchSlots(); // Refresh slots
     } catch (error: unknown) {
@@ -132,6 +137,54 @@ export default function AdminSlotsPage() {
         (error as { response?: { data?: { message?: string } } }).response?.data
           ?.message || "Failed to delete slot";
       toast.error(message);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedSlots.length === 0) {
+      toast.error("Please select slots to delete");
+      return;
+    }
+
+    if (
+      !confirm(
+        `Are you sure you want to delete ${selectedSlots.length} slot(s)? This action cannot be undone.`,
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setDeleting(true);
+      await slotsAPI.deleteSlots(selectedSlots);
+      toast.success(`${selectedSlots.length} slot(s) deleted successfully!`);
+      setSelectedSlots([]);
+      fetchSlots(); // Refresh slots
+    } catch (error: unknown) {
+      const message =
+        (error as { response?: { data?: { message?: string } } }).response?.data
+          ?.message || "Failed to delete slots";
+      toast.error(message);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleSelectSlot = (slotId: string) => {
+    setSelectedSlots((prev) =>
+      prev.includes(slotId)
+        ? prev.filter((id) => id !== slotId)
+        : [...prev, slotId],
+    );
+  };
+
+  const handleSelectAll = () => {
+    if (selectedSlots.length === filteredSlots.length) {
+      setSelectedSlots([]);
+    } else {
+      setSelectedSlots(filteredSlots.map((slot) => slot.id));
     }
   };
 
@@ -312,6 +365,50 @@ export default function AdminSlotsPage() {
         </CardContent>
       </Card>
 
+      {/* Bulk Actions */}
+      {selectedSlots.length > 0 && (
+        <Card className="mb-4 border-blue-200 bg-blue-50">
+          <CardContent className="py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <CheckSquare className="h-5 w-5 text-blue-600" />
+                <span className="text-sm font-medium text-blue-900">
+                  {selectedSlots.length} slot(s) selected
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSelectedSlots([])}
+                >
+                  Clear Selection
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleBulkDelete}
+                  disabled={deleting}
+                  className="bg-red-600 hover:bg-red-700"
+                >
+                  {deleting ? (
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Deleting...
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <Trash2 className="h-4 w-4" />
+                      Delete Selected
+                    </div>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Slots Table */}
       {loading ? (
         <div className="flex items-center justify-center py-12">
@@ -338,6 +435,20 @@ export default function AdminSlotsPage() {
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <button
+                      onClick={handleSelectAll}
+                      className="flex items-center gap-2 hover:text-gray-700"
+                    >
+                      {selectedSlots.length === filteredSlots.length &&
+                      filteredSlots.length > 0 ? (
+                        <CheckSquare className="h-4 w-4 text-blue-600" />
+                      ) : (
+                        <Square className="h-4 w-4 text-gray-400" />
+                      )}
+                      <span>Select All</span>
+                    </button>
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Resource
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -360,6 +471,18 @@ export default function AdminSlotsPage() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredSlots.map((slot) => (
                   <tr key={slot.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <button
+                        onClick={() => handleSelectSlot(slot.id)}
+                        className="flex items-center"
+                      >
+                        {selectedSlots.includes(slot.id) ? (
+                          <CheckSquare className="h-4 w-4 text-blue-600" />
+                        ) : (
+                          <Square className="h-4 w-4 text-gray-400" />
+                        )}
+                      </button>
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <User className="h-5 w-5 text-gray-400 mr-2" />

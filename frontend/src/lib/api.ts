@@ -57,4 +57,6 @@ export const slotsAPI = {
   }) => api.post("/slots/create", data),
   getAllSlots: () => api.get("/slots/all-slot-list"),
   updateSlot: (slotId: string) => api.patch(`/slots/update/${slotId}`),
+  deleteSlots: (slotIds: string[]) =>
+    api.delete("/slots/delete", { data: { slotIds } }),
 };

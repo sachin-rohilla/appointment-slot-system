@@ -1,9 +1,11 @@
 import { Request, Response, NextFunction } from "express";
 import {
   createSlotService,
+  deleteSlotService,
   getSlotService,
   updateSlotService,
 } from "../services/slot_service";
+import { AppError } from "../utils/app_error";
 
 export const createSlotController = async (
   req: Request,
@@ -51,6 +53,33 @@ export const updateSlotController = async (
     res.status(200).json({
       success: true,
       message: "Slot updated successfully",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteSlotController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const { slotIds } = req.body;
+    if (!Array.isArray(slotIds) || slotIds.length === 0) {
+      throw new AppError("slotIds must be a non-empty array", 400);
+    }
+    const result = await deleteSlotService(slotIds);
+    if (result.count === 0) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "No slots deleted. Either slots are booked or already deleted.",
+      });
+    }
+    res.status(200).json({
+      success: true,
+      message: "Slot deleted successfully",
     });
   } catch (error) {
     next(error);
