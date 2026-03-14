@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
-import { slotsAPI } from "@/lib/api";
+import { slotsAPI, bookingsAPI } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +19,11 @@ interface Slot {
   startTime: string;
   endTime: string;
   state: "available" | "held" | "booked";
+  heldByUserId?: string;
+  heldUntil?: string;
+  isDeleted?: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export default function SlotsPage() {
@@ -28,6 +33,7 @@ export default function SlotsPage() {
   const [filteredSlots, setFilteredSlots] = useState<Slot[]>([]);
   const [loading, setLoading] = useState(true);
   const [holdingSlotId, setHoldingSlotId] = useState<string | null>(null);
+  const [currentTime, setCurrentTime] = useState(new Date());
   const [filters, setFilters] = useState({
     resource: "",
     date: "",
@@ -48,6 +54,33 @@ export default function SlotsPage() {
   useEffect(() => {
     filterSlots();
   }, [slots, filters]);
+
+  // Update current time every second for countdown timer
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const getTimeRemaining = (heldUntil: string) => {
+    const now = new Date();
+    const heldUntilDate = new Date(heldUntil);
+    const timeDiff = heldUntilDate.getTime() - now.getTime();
+
+    if (timeDiff <= 0) {
+      return { expired: true, text: "Hold expired" };
+    }
+
+    const minutes = Math.floor(timeDiff / (1000 * 60));
+    const seconds = Math.floor((timeDiff % (1000 * 60)) / 1000);
+
+    return {
+      expired: false,
+      text: `${minutes}:${seconds.toString().padStart(2, "0")} min left`,
+    };
+  };
 
   const fetchSlots = async () => {
     try {
@@ -109,6 +142,31 @@ export default function SlotsPage() {
         (error as { response?: { data?: { message?: string } } })?.response
           ?.data?.message || "Failed to hold slot";
       toast.error(errorMessage);
+    } finally {
+      setHoldingSlotId(null);
+    }
+  };
+
+  const handleBookSlot = async (slotId: string) => {
+    if (
+      !confirm(
+        "Are you sure you want to book this slot? This will confirm your appointment.",
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setHoldingSlotId(slotId);
+      await bookingsAPI.createBooking(slotId);
+      toast.success("Slot booked successfully!");
+      fetchSlots(); // Refresh slots to show updated state
+    } catch (error: unknown) {
+      console.error("Error booking slot:", error);
+      const message =
+        (error as { response?: { data?: { message?: string } } })?.response
+          ?.data?.message || "Failed to book slot";
+      toast.error(message);
     } finally {
       setHoldingSlotId(null);
     }
@@ -274,12 +332,46 @@ export default function SlotsPage() {
 
                 {slot.state === "held" && (
                   <div className="w-full bg-gradient-to-r from-yellow-100 to-orange-100 border-2 border-yellow-300 rounded-lg p-4 text-center">
-                    <div className="flex items-center justify-center gap-2">
+                    <div className="flex items-center justify-center gap-2 mb-2">
                       <Lock className="h-5 w-5 text-yellow-600" />
                       <span className="font-semibold text-yellow-800">
                         Slot Reserved
                       </span>
                     </div>
+                    {slot.heldUntil && (
+                      <div className="text-sm text-yellow-700 font-medium mb-3">
+                        {getTimeRemaining(slot.heldUntil).expired ? (
+                          <span className="text-red-600">Hold Expired</span>
+                        ) : (
+                          <div className="flex items-center justify-center gap-2">
+                            <Clock className="h-4 w-4" />
+                            <span>{getTimeRemaining(slot.heldUntil).text}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    <Button
+                      onClick={() => handleBookSlot(slot.id)}
+                      disabled={
+                        holdingSlotId === slot.id ||
+                        (slot.heldUntil
+                          ? getTimeRemaining(slot.heldUntil).expired
+                          : false)
+                      }
+                      className="w-full h-12 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold shadow-lg"
+                    >
+                      {holdingSlotId === slot.id ? (
+                        <div className="flex items-center justify-center gap-2">
+                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          <span>Booking...</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-center gap-2">
+                          <CheckCircle className="h-5 w-5" />
+                          <span>Book Now</span>
+                        </div>
+                      )}
+                    </Button>
                   </div>
                 )}
 

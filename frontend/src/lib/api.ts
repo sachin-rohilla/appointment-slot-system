@@ -56,7 +56,14 @@ export const slotsAPI = {
     endTime: string;
   }) => api.post("/slots/create", data),
   getAllSlots: () => api.get("/slots/all-slot-list"),
+  getDeletedSlots: () => api.get("/slots/deleted-slot-list"),
   updateSlot: (slotId: string) => api.patch(`/slots/update/${slotId}`),
   deleteSlots: (slotIds: string[]) =>
     api.delete("/slots/delete", { data: { slotIds } }),
+  undoSlots: (slotIds: string[]) => api.patch("/slots/undo", { slotIds }),
+};
+
+// Bookings API
+export const bookingsAPI = {
+  createBooking: (slotId: string) => api.post("/bookings", { slotId }),
 };

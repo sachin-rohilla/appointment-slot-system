@@ -4,7 +4,9 @@ import { authorizeMiddleware } from "../middlewares/authorize_middleware";
 import {
   createSlotController,
   deleteSlotController,
+  getDeleteSlotController,
   getSlotController,
+  undoSlotController,
   updateSlotController,
 } from "../controllers/slot_controller";
 
@@ -19,6 +21,8 @@ slotRouter.post(
 
 slotRouter.get("/all-slot-list", authMiddleware, getSlotController);
 
+slotRouter.get("/deleted-slot-list", authMiddleware, getDeleteSlotController);
+
 slotRouter.patch("/update/:slotId", authMiddleware, updateSlotController);
 
 slotRouter.delete(
@@ -27,5 +31,7 @@ slotRouter.delete(
   authorizeMiddleware("admin"),
   deleteSlotController,
 );
+
+slotRouter.patch("/undo", authMiddleware, undoSlotController);
 
 export default slotRouter;

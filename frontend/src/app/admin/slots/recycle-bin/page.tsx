@@ -20,44 +20,37 @@ import {
   Calendar,
   Clock,
   User,
-  PlusCircle,
   Search,
   Filter,
-  Edit,
   Trash2,
-  Users,
-  CheckSquare,
-  Square,
+  RotateCcw,
+  AlertTriangle,
 } from "lucide-react";
 import Link from "next/link";
 import toast from "react-hot-toast";
 import { format } from "date-fns";
 
-export default function AdminSlotsPage() {
+export default function RecycleBinPage() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
-  const [slots, setSlots] = useState<Slot[]>([]);
-  const [filteredSlots, setFilteredSlots] = useState<Slot[]>([]);
+  const [deletedSlots, setDeletedSlots] = useState<Slot[]>([]);
+  const [filteredDeletedSlots, setFilteredDeletedSlots] = useState<Slot[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedSlots, setSelectedSlots] = useState<string[]>([]);
-  const [deleting, setDeleting] = useState(false);
+  const [restoring, setRestoring] = useState(false);
   const [filters, setFilters] = useState({
     resource: "",
-    state: "",
   });
 
   const resources = [
     "All Resources",
-    "Dr. Smith",
-    "Dr. Johnson",
-    "Dr. Williams",
-    "Dr. Brown",
-    "Dr. Davis",
-    "Dr. Miller",
+    "Conference Room A",
+    "Conference Room B",
+    "Service Desk",
+    "Meeting Room 1",
+    "Meeting Room 2",
   ];
-
-  const states = ["All States", "available", "held", "booked"];
 
   useEffect(() => {
     if (!isLoading && (!isAuthenticated || user?.role !== "admin")) {
@@ -67,31 +60,31 @@ export default function AdminSlotsPage() {
 
   useEffect(() => {
     if (isAuthenticated && user?.role === "admin") {
-      fetchSlots();
+      fetchDeletedSlots();
     }
   }, [isAuthenticated, user]);
 
   useEffect(() => {
-    filterAndSearchSlots();
-  }, [slots, searchTerm, filters]);
+    filterAndSearchDeletedSlots();
+  }, [deletedSlots, searchTerm, filters]);
 
-  const fetchSlots = async () => {
+  const fetchDeletedSlots = async () => {
     try {
       setLoading(true);
-      const response = await slotsAPI.getAllSlots();
-      setSlots(response.data.data || []);
+      const response = await slotsAPI.getDeletedSlots();
+      setDeletedSlots(response.data.data || []);
     } catch (error: unknown) {
       const message =
         (error as { response?: { data?: { message?: string } } }).response?.data
-          ?.message || "Failed to fetch slots";
+          ?.message || "Failed to fetch deleted slots";
       toast.error(message);
     } finally {
       setLoading(false);
     }
   };
 
-  const filterAndSearchSlots = () => {
-    let filtered = [...slots];
+  const filterAndSearchDeletedSlots = () => {
+    let filtered = [...deletedSlots];
 
     // Apply search
     if (searchTerm) {
@@ -105,70 +98,66 @@ export default function AdminSlotsPage() {
       filtered = filtered.filter((slot) => slot.resource === filters.resource);
     }
 
-    if (filters.state && filters.state !== "All States") {
-      filtered = filtered.filter((slot) => slot.state === filters.state);
-    }
-
-    // Sort by start time
+    // Sort by deletion date (most recent first)
     filtered.sort(
       (a, b) =>
-        new Date(a.startTime).getTime() - new Date(b.startTime).getTime(),
+        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
     );
 
-    setFilteredSlots(filtered);
+    setFilteredDeletedSlots(filtered);
   };
 
-  const handleDeleteSlot = async (slotId: string) => {
+  const handleRestoreSlot = async (slotId: string) => {
     if (
       !confirm(
-        "Are you sure you want to delete this slot? This action cannot be undone.",
+        "Are you sure you want to restore this slot? It will be available for booking again.",
       )
     ) {
       return;
     }
 
     try {
-      setDeleting(true);
-      await slotsAPI.deleteSlots([slotId]);
-      toast.success("Slot deleted successfully!");
-      fetchSlots(); // Refresh slots
+      setRestoring(true);
+      await slotsAPI.undoSlots([slotId]);
+      toast.success("Slot restored successfully!");
+      fetchDeletedSlots(); // Refresh deleted slots
     } catch (error: unknown) {
       const message =
         (error as { response?: { data?: { message?: string } } }).response?.data
-          ?.message || "Failed to delete slot";
+          ?.message || "Failed to restore slot";
       toast.error(message);
     } finally {
-      setDeleting(false);
+      setRestoring(false);
     }
   };
 
-  const handleBulkDelete = async () => {
+  const handleBulkRestore = async () => {
     if (selectedSlots.length === 0) {
-      toast.error("Please select slots to delete");
+      toast.error("Please select slots to restore");
       return;
     }
 
     if (
       !confirm(
-        `Are you sure you want to delete ${selectedSlots.length} slot(s)? This action cannot be undone.`,
+        `Are you sure you want to restore ${selectedSlots.length} slot(s)? They will be available for booking again.`,
       )
     ) {
       return;
     }
 
     try {
-      setDeleting(true);
-      await slotsAPI.deleteSlots(selectedSlots);
-      toast.success(`${selectedSlots.length} slot(s) deleted successfully!`);
+      setRestoring(true);
+      await slotsAPI.undoSlots(selectedSlots);
+      toast.success(`${selectedSlots.length} slot(s) restored successfully!`);
       setSelectedSlots([]);
-      fetchSlots(); // Refresh slots
+      fetchDeletedSlots(); // Refresh deleted slots
     } catch (error: unknown) {
       const message =
         (error as { response?: { data?: { message?: string } } }).response?.data
-          ?.message || "Failed to delete slots";
+          ?.message || "Failed to restore slots";
       toast.error(message);
     } finally {
-      setDeleting(false);
+      setRestoring(false);
     }
   };
 
@@ -181,36 +170,10 @@ export default function AdminSlotsPage() {
   };
 
   const handleSelectAll = () => {
-    if (selectedSlots.length === filteredSlots.length) {
+    if (selectedSlots.length === filteredDeletedSlots.length) {
       setSelectedSlots([]);
     } else {
-      setSelectedSlots(filteredSlots.map((slot) => slot.id));
-    }
-  };
-
-  const getStateColor = (state: string) => {
-    switch (state) {
-      case "available":
-        return "bg-green-100 text-green-800";
-      case "booked":
-        return "bg-red-100 text-red-800";
-      case "held":
-        return "bg-yellow-100 text-yellow-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
-
-  const getStateText = (state: string) => {
-    switch (state) {
-      case "available":
-        return "Available";
-      case "booked":
-        return "Booked";
-      case "held":
-        return "Held";
-      default:
-        return state;
+      setSelectedSlots(filteredDeletedSlots.map((slot) => slot.id));
     }
   };
 
@@ -226,89 +189,72 @@ export default function AdminSlotsPage() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="mb-8 flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Manage Slots
+          <h1 className="text-3xl font-bold text-gray-900 mb-2 flex items-center gap-2">
+            <Trash2 className="h-8 w-8 text-red-600" />
+            Recycle Bin
           </h1>
           <p className="text-gray-600">
-            Create and manage appointment slots across all resources
+            View and restore deleted appointment slots
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <Link href="/admin/slots/recycle-bin">
-            <Button
-              variant="outline"
-              className="border-red-200 text-red-600 hover:bg-red-50"
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              Recycle Bin
-            </Button>
-          </Link>
-          <Link href="/admin/slots/create">
-            <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
-              <PlusCircle className="h-4 w-4 mr-2" />
-              Create New Slot
-            </Button>
-          </Link>
-        </div>
+        <Link href="/admin/slots">
+          <Button variant="outline">
+            <Calendar className="h-4 w-4 mr-2" />
+            Back to Slots
+          </Button>
+        </Link>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-900">
-              Total Slots
-            </CardTitle>
-            <Calendar className="h-4 w-4 text-gray-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{slots.length}</div>
-            <p className="text-xs text-gray-600">All slots in system</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-green-900">
-              Available
-            </CardTitle>
-            <Users className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-900">
-              {slots.filter((s) => s.state === "available").length}
-            </div>
-            <p className="text-xs text-green-700">Ready for booking</p>
-          </CardContent>
-        </Card>
-
-        <Card>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <Card className="bg-gradient-to-br from-red-50 to-red-100 border-red-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-red-900">
-              Booked
+              Deleted Slots
             </CardTitle>
-            <Users className="h-4 w-4 text-red-600" />
+            <Trash2 className="h-4 w-4 text-red-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-900">
-              {slots.filter((s) => s.state === "booked").length}
+              {deletedSlots.length}
             </div>
-            <p className="text-xs text-red-700">Confirmed appointments</p>
+            <p className="text-xs text-red-700">Slots in recycle bin</p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-yellow-900">
-              Held
+            <CardTitle className="text-sm font-medium text-orange-900">
+              Deleted Today
             </CardTitle>
-            <Clock className="h-4 w-4 text-yellow-600" />
+            <Calendar className="h-4 w-4 text-orange-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-yellow-900">
-              {slots.filter((s) => s.state === "held").length}
+            <div className="text-2xl font-bold text-orange-900">
+              {
+                deletedSlots.filter(
+                  (slot) =>
+                    new Date(slot.updatedAt).toDateString() ===
+                    new Date().toDateString(),
+                ).length
+              }
             </div>
-            <p className="text-xs text-yellow-700">Temporarily held</p>
+            <p className="text-xs text-orange-700">Deleted today</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-blue-900">
+              Selected for Restore
+            </CardTitle>
+            <RotateCcw className="h-4 w-4 text-blue-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-900">
+              {selectedSlots.length}
+            </div>
+            <p className="text-xs text-blue-700">Slots to restore</p>
           </CardContent>
         </Card>
       </div>
@@ -322,7 +268,7 @@ export default function AdminSlotsPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="search">Search</Label>
               <div className="relative">
@@ -354,24 +300,6 @@ export default function AdminSlotsPage() {
                 ))}
               </select>
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="state-filter">Status</Label>
-              <select
-                id="state-filter"
-                value={filters.state}
-                onChange={(e) =>
-                  setFilters((prev) => ({ ...prev, state: e.target.value }))
-                }
-                className="w-full h-10 px-3 py-2 border border-gray-300 rounded-md bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                {states.map((state) => (
-                  <option key={state} value={state}>
-                    {state}
-                  </option>
-                ))}
-              </select>
-            </div>
           </div>
         </CardContent>
       </Card>
@@ -382,9 +310,9 @@ export default function AdminSlotsPage() {
           <CardContent className="py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <CheckSquare className="h-5 w-5 text-blue-600" />
+                <RotateCcw className="h-5 w-5 text-blue-600" />
                 <span className="text-sm font-medium text-blue-900">
-                  {selectedSlots.length} slot(s) selected
+                  {selectedSlots.length} slot(s) selected for restore
                 </span>
               </div>
               <div className="flex items-center gap-2">
@@ -396,21 +324,21 @@ export default function AdminSlotsPage() {
                   Clear Selection
                 </Button>
                 <Button
-                  variant="destructive"
+                  variant="default"
                   size="sm"
-                  onClick={handleBulkDelete}
-                  disabled={deleting}
-                  className="bg-red-600 hover:bg-red-700"
+                  onClick={handleBulkRestore}
+                  disabled={restoring}
+                  className="bg-blue-600 hover:bg-blue-700"
                 >
-                  {deleting ? (
+                  {restoring ? (
                     <div className="flex items-center gap-2">
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      Deleting...
+                      Restoring...
                     </div>
                   ) : (
                     <div className="flex items-center gap-2">
-                      <Trash2 className="h-4 w-4" />
-                      Delete Selected
+                      <RotateCcw className="h-4 w-4" />
+                      Restore Selected
                     </div>
                   )}
                 </Button>
@@ -420,22 +348,22 @@ export default function AdminSlotsPage() {
         </Card>
       )}
 
-      {/* Slots Table */}
+      {/* Deleted Slots Table */}
       {loading ? (
         <div className="flex items-center justify-center py-12">
           <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
         </div>
-      ) : filteredSlots.length === 0 ? (
+      ) : filteredDeletedSlots.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
-            <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <Trash2 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">
-              No slots found
+              No deleted slots found
             </h3>
             <p className="text-gray-600">
-              {searchTerm || filters.resource || filters.state
+              {searchTerm || filters.resource
                 ? "Try adjusting your search or filters"
-                : "No slots have been created yet."}
+                : "The recycle bin is empty."}
             </p>
           </CardContent>
         </Card>
@@ -450,11 +378,11 @@ export default function AdminSlotsPage() {
                       onClick={handleSelectAll}
                       className="flex items-center gap-2 hover:text-gray-700"
                     >
-                      {selectedSlots.length === filteredSlots.length &&
-                      filteredSlots.length > 0 ? (
-                        <CheckSquare className="h-4 w-4 text-blue-600" />
+                      {selectedSlots.length === filteredDeletedSlots.length &&
+                      filteredDeletedSlots.length > 0 ? (
+                        <div className="w-4 h-4 bg-blue-600 rounded" />
                       ) : (
-                        <Square className="h-4 w-4 text-gray-400" />
+                        <div className="w-4 h-4 border border-gray-300 rounded" />
                       )}
                       <span>Select All</span>
                     </button>
@@ -463,16 +391,13 @@ export default function AdminSlotsPage() {
                     Resource
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Date & Time
+                    Original Date & Time
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Duration
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Created
+                    Deleted On
                   </th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Actions
@@ -480,17 +405,17 @@ export default function AdminSlotsPage() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {filteredSlots.map((slot) => (
-                  <tr key={slot.id} className="hover:bg-gray-50">
+                {filteredDeletedSlots.map((slot) => (
+                  <tr key={slot.id} className="hover:bg-gray-50 opacity-75">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <button
                         onClick={() => handleSelectSlot(slot.id)}
                         className="flex items-center"
                       >
                         {selectedSlots.includes(slot.id) ? (
-                          <CheckSquare className="h-4 w-4 text-blue-600" />
+                          <div className="w-4 h-4 bg-blue-600 rounded" />
                         ) : (
-                          <Square className="h-4 w-4 text-gray-400" />
+                          <div className="w-4 h-4 border border-gray-300 rounded" />
                         )}
                       </button>
                     </td>
@@ -522,25 +447,23 @@ export default function AdminSlotsPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <Badge className={getStateColor(slot.state)}>
-                        {getStateText(slot.state)}
-                      </Badge>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {format(new Date(slot.createdAt), "MMM d, yyyy")}
+                      <div className="text-sm text-gray-900">
+                        {format(new Date(slot.updatedAt), "MMM d, yyyy")}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        {format(new Date(slot.updatedAt), "h:mm a")}
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex items-center justify-end gap-2">
-                        <Button variant="outline" size="sm">
-                          <Edit className="h-4 w-4" />
-                        </Button>
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleDeleteSlot(slot.id)}
-                          className="text-red-600 hover:text-red-700 hover:border-red-300"
+                          onClick={() => handleRestoreSlot(slot.id)}
+                          disabled={restoring}
+                          className="text-blue-600 hover:text-blue-700 hover:border-blue-300"
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <RotateCcw className="h-4 w-4" />
                         </Button>
                       </div>
                     </td>

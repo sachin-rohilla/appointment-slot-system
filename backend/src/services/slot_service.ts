@@ -61,6 +61,14 @@ export const getSlotService = () => {
   });
 };
 
+export const getDeleteSlotService = () => {
+  return prisma.slot.findMany({
+    where: {
+      isDeleted: true,
+    },
+  });
+};
+
 export const updateSlotService = async (userId: string, slotId: string) => {
   const now = new Date();
   const updatedSlots = await prisma.slot.updateMany({
@@ -105,4 +113,20 @@ export const deleteSlotService = async (slotIds: string[]) => {
     },
   });
   return deletedData;
+};
+
+export const undoSlotService = async (slotIds: string[]) => {
+  const updateData = await prisma.slot.updateMany({
+    where: {
+      id: {
+        in: slotIds,
+      },
+      isDeleted: true,
+    },
+    data: {
+      isDeleted: false,
+    },
+  });
+
+  return updateData;
 };
