@@ -66,7 +66,7 @@ export const updateSlotController = async (
   next: NextFunction,
 ) => {
   try {
-    const userId = (req as any).user.id;
+    const { userId } = (req as any).user;
     const { slotId } = req.params;
     await updateSlotService(userId, slotId as string);
     res.status(200).json({

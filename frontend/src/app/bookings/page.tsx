@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { bookingsAPI } from "@/lib/api";
 import { Booking } from "@/types";
 import {
   Card,
@@ -33,11 +34,15 @@ export default function BookingsPage() {
   const fetchBookings = async () => {
     try {
       setLoading(true);
-      // TODO: Replace with actual bookings API when available
-      // For now, show no bookings since we don't have booking endpoints yet
-      setBookings([]);
-    } catch (error) {
-      toast.error("Failed to fetch bookings");
+      const response = await bookingsAPI.getUserBookings();
+      // Backend returns: { success: true, data: bookings, message: "Bookings retrieved successfully" }
+      const bookingsData = response.data?.data || [];
+      setBookings(bookingsData);
+    } catch (error: unknown) {
+      console.error("Error fetching bookings:", error);
+      const message =
+        (error as any)?.response?.data?.message || "Failed to fetch bookings";
+      setError(message);
       setBookings([]);
     } finally {
       setLoading(false);
@@ -101,14 +106,16 @@ export default function BookingsPage() {
 
   const upcomingBookings = bookings.filter(
     (booking) =>
-      booking.status === "confirmed" && isUpcoming(booking.slot.startTime),
+      booking.status === "confirmed" &&
+      booking.slot &&
+      isUpcoming(booking.slot.startTime),
   );
 
   const pastBookings = bookings.filter(
     (booking) =>
       booking.status === "cancelled" ||
       booking.status === "expired" ||
-      !isUpcoming(booking.slot.startTime),
+      (booking.slot && !isUpcoming(booking.slot.startTime)),
   );
 
   return (

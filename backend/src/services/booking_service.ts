@@ -52,3 +52,14 @@ export const createBookingService = async (userId: string, slotId: string) => {
     return booking;
   });
 };
+
+export const getBookingsService = (userId: string) => {
+  return prisma.booking.findMany({
+    where: {
+      userId,
+    },
+    include: {
+      slot: true,
+    },
+  });
+};
