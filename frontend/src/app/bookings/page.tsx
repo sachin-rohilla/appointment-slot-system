@@ -53,13 +53,12 @@ export default function BookingsPage() {
     setCancellingBookingId(bookingId);
 
     try {
-      // await bookingsAPI.cancelBooking(bookingId);
+      await bookingsAPI.cancelBooking(bookingId);
       toast.success("Booking cancelled successfully!");
       fetchBookings(); // Refresh bookings
     } catch (error: unknown) {
       const message =
-        (error as { response?: { data?: { message?: string } } }).response?.data
-          ?.message || "Failed to cancel booking";
+        (error as any)?.response?.data?.message || "Failed to cancel booking";
       toast.error(message);
     } finally {
       setCancellingBookingId(null);

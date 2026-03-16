@@ -67,4 +67,6 @@ export const slotsAPI = {
 export const bookingsAPI = {
   createBooking: (slotId: string) => api.post("/bookings", { slotId }),
   getUserBookings: () => api.get("/bookings/bookings-list"),
+  cancelBooking: (bookingId: string) =>
+    api.patch(`/bookings/cancel-booking/${bookingId}`),
 };

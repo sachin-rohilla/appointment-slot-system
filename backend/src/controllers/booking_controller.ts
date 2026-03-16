@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import {
+  cancelBookingService,
   createBookingService,
   getBookingsService,
 } from "../services/booking_service";
@@ -35,6 +36,25 @@ export const getBookingsController = async (
       success: true,
       message: "Bookings retrieved successfully",
       data: bookings,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const cancelBookingController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const { bookingId } = req.params;
+    const { userId } = (req as any).user;
+    const result = await cancelBookingService(bookingId as string, userId);
+    res.status(200).json({
+      success: true,
+      message: "Booking cancelled successfully",
+      data: result,
     });
   } catch (error) {
     next(error);

@@ -33,21 +33,47 @@ export const createBookingService = async (userId: string, slotId: string) => {
       throw new AppError("Slot is not held by you", 403);
     }
 
-    const booking = await tx.booking.create({
-      data: {
-        userId,
+    let booking = await tx.booking.findFirst({
+      where: {
         slotId,
+        userId,
+        status: "cancelled",
       },
     });
+    if (booking) {
+      await tx.booking.update({
+        where: {
+          id: booking.id,
+        },
+        data: {
+          status: "confirmed",
+        },
+      });
+    } else {
+      booking = await tx.booking.create({
+        data: {
+          userId,
+          slotId,
+        },
+      });
+    }
 
-    await tx.slot.update({
-      where: { id: slotId },
+    const slotUpdate = await tx.slot.updateMany({
+      where: {
+        id: slotId,
+        state: "held",
+        heldByUserId: userId,
+      },
       data: {
         state: "booked",
         heldByUserId: null,
         heldUntil: null,
       },
     });
+
+    if (slotUpdate.count === 0) {
+      throw new AppError("Slot already booked", 409);
+    }
 
     return booking;
   });
@@ -61,5 +87,59 @@ export const getBookingsService = (userId: string) => {
     include: {
       slot: true,
     },
+  });
+};
+
+export const cancelBookingService = async (
+  bookingId: string,
+  userId: string,
+) => {
+  return prisma.$transaction(async (tx) => {
+    const booking = await tx.booking.findFirst({
+      where: {
+        id: bookingId,
+        userId,
+      },
+    });
+
+    if (!booking) {
+      throw new AppError("Booking not found", 404);
+    }
+
+    const bookingResult = await tx.booking.updateMany({
+      where: {
+        id: bookingId,
+        userId,
+        status: "confirmed",
+      },
+      data: {
+        status: "cancelled",
+      },
+    });
+
+    if (bookingResult.count === 0) {
+      throw new AppError("Booking already cancelled", 400);
+    }
+
+    const slotResult = await tx.slot.updateMany({
+      where: {
+        id: booking.slotId,
+        state: "booked",
+      },
+      data: {
+        state: "available",
+        heldByUserId: null,
+        heldUntil: null,
+      },
+    });
+
+    if (slotResult.count === 0) {
+      throw new AppError("Slot already released", 400);
+    }
+
+    return {
+      bookingId,
+      status: "cancelled",
+    };
   });
 };
