@@ -26,8 +26,8 @@ export const createWaitListService = async ({
         throw new AppError("Slot deleted", 400);
       }
 
-      if (slot.state !== "booked") {
-        throw new AppError("Slot is not booked", 400);
+      if (slot.state === "available") {
+        throw new AppError("Slot is available - book it directly", 400);
       }
 
       if (slot.endTime < now) {

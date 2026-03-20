@@ -5,26 +5,18 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { slotsAPI } from "@/lib/api";
 import { Slot } from "@/types";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Calendar,
-  Clock,
   User,
   Search,
   Filter,
   Trash2,
   RotateCcw,
-  AlertTriangle,
+  Trash,
 } from "lucide-react";
 import Link from "next/link";
 import toast from "react-hot-toast";
@@ -39,6 +31,7 @@ export default function RecycleBinPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedSlots, setSelectedSlots] = useState<string[]>([]);
   const [restoring, setRestoring] = useState(false);
+  const [deletingPermanent, setDeletingPermanent] = useState(false);
   const [filters, setFilters] = useState({
     resource: "",
   });
@@ -158,6 +151,60 @@ export default function RecycleBinPage() {
       toast.error(message);
     } finally {
       setRestoring(false);
+    }
+  };
+
+  const handleDeletePermanentSlot = async (slotId: string) => {
+    if (
+      !confirm(
+        "Are you sure you want to permanently delete this slot? This action cannot be undone.",
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setDeletingPermanent(true);
+      await slotsAPI.deleteSlotsPermanent([slotId]);
+      toast.success("Slot deleted permanently successfully!");
+      fetchDeletedSlots(); // Refresh deleted slots
+    } catch (error: unknown) {
+      const message =
+        (error as { response?: { data?: { message?: string } } }).response?.data
+          ?.message || "Failed to delete slot permanently";
+      toast.error(message);
+    } finally {
+      setDeletingPermanent(false);
+    }
+  };
+
+  const handleBulkDeletePermanent = async () => {
+    if (selectedSlots.length === 0) {
+      toast.error("Please select slots to delete permanently");
+      return;
+    }
+
+    if (
+      !confirm(
+        `Are you sure you want to permanently delete ${selectedSlots.length} slot(s)? This action cannot be undone.`,
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setDeletingPermanent(true);
+      await slotsAPI.deleteSlotsPermanent(selectedSlots);
+      toast.success(`${selectedSlots.length} slot(s) deleted permanently!`);
+      setSelectedSlots([]);
+      fetchDeletedSlots(); // Refresh deleted slots
+    } catch (error: unknown) {
+      const message =
+        (error as { response?: { data?: { message?: string } } }).response?.data
+          ?.message || "Failed to delete slots permanently";
+      toast.error(message);
+    } finally {
+      setDeletingPermanent(false);
     }
   };
 
@@ -312,7 +359,7 @@ export default function RecycleBinPage() {
               <div className="flex items-center gap-2">
                 <RotateCcw className="h-5 w-5 text-blue-600" />
                 <span className="text-sm font-medium text-blue-900">
-                  {selectedSlots.length} slot(s) selected for restore
+                  {selectedSlots.length} slot(s) selected
                 </span>
               </div>
               <div className="flex items-center gap-2">
@@ -339,6 +386,25 @@ export default function RecycleBinPage() {
                     <div className="flex items-center gap-2">
                       <RotateCcw className="h-4 w-4" />
                       Restore Selected
+                    </div>
+                  )}
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleBulkDeletePermanent}
+                  disabled={deletingPermanent}
+                  className="bg-red-800 hover:bg-red-900"
+                >
+                  {deletingPermanent ? (
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Deleting...
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <Trash className="h-4 w-4" />
+                      Delete Permanently
                     </div>
                   )}
                 </Button>
@@ -464,6 +530,16 @@ export default function RecycleBinPage() {
                           className="text-blue-600 hover:text-blue-700 hover:border-blue-300"
                         >
                           <RotateCcw className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDeletePermanentSlot(slot.id)}
+                          disabled={deletingPermanent}
+                          className="text-red-800 hover:text-red-900 hover:border-red-400"
+                          title="Delete Permanently (cannot be undone)"
+                        >
+                          <Trash className="h-4 w-4" />
                         </Button>
                       </div>
                     </td>

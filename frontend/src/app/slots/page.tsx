@@ -23,19 +23,39 @@ interface Slot {
   heldByUserId?: string;
   heldUntil?: string;
   canJoinWaitlist?: boolean;
+  bookingId?: string;
+  isBookedByUser?: boolean;
+  isInWaitlist?: boolean;
   createdAt: string;
   updatedAt: string;
 }
 
+interface PaginationResponse {
+  result: Slot[];
+  page: number;
+  limit: number;
+  total_pages: number;
+  total: number;
+}
+
 export default function SlotsPage() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
   const router = useRouter();
   const [slots, setSlots] = useState<Slot[]>([]);
   const [filteredSlots, setFilteredSlots] = useState<Slot[]>([]);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 10,
+    total_pages: 1,
+    total: 0,
+  });
   const [loading, setLoading] = useState(true);
   const [holdingSlotId, setHoldingSlotId] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [joiningWaitlistId, setJoiningWaitlistId] = useState<string | null>(
+    null,
+  );
+  const [cancellingBookingId, setCancellingBookingId] = useState<string | null>(
     null,
   );
   const [filters, setFilters] = useState({
@@ -86,20 +106,25 @@ export default function SlotsPage() {
     };
   };
 
-  const fetchSlots = async () => {
+  const fetchSlots = async (page = 1, limit = 10) => {
     try {
       setLoading(true);
-      const response = await slotsAPI.getAllSlots();
-      // Backend returns: { success: true, data: slots, message: "Slots fetched successfully" }
-      const slotsData = response.data?.data || [];
-      setSlots(slotsData);
-
-      if (slotsData.length === 0) {
-        toast.error("No slots available at the moment");
-      }
-    } catch (error) {
+      const response = await slotsAPI.getAllSlots(page, limit);
+      // Backend returns: { success: true, data: { result, page, limit, total_pages, total }, message: "Slots fetched successfully" }
+      const paginationData = response.data?.data || {};
+      setSlots(paginationData.result || []);
+      setPagination({
+        page: paginationData.page || 1,
+        limit: paginationData.limit || 10,
+        total_pages: paginationData.total_pages || 1,
+        total: paginationData.total || 0,
+      });
+    } catch (error: unknown) {
       console.error("Error fetching slots:", error);
-      toast.error("Failed to load slots");
+      const message =
+        (error as { response?: { data?: { message?: string } } })?.response
+          ?.data?.message || "Failed to fetch slots";
+      toast.error(message);
       setSlots([]);
     } finally {
       setLoading(false);
@@ -179,7 +204,7 @@ export default function SlotsPage() {
   const handleJoinWaitlist = async (slotId: string) => {
     if (
       !confirm(
-        "Do you want to join the waitlist? You'll be notified if this slot becomes available.",
+        "Do you want to join waitlist? You'll be notified if this slot becomes available.",
       )
     ) {
       return;
@@ -189,7 +214,7 @@ export default function SlotsPage() {
       setJoiningWaitlistId(slotId);
       await waitlistAPI.joinWaitlist(slotId);
       toast.success("Joined waitlist successfully!");
-      fetchSlots(); // Refresh slots
+      fetchSlots(pagination.page, pagination.limit);
     } catch (error: unknown) {
       console.error("Error joining waitlist:", error);
       const message =
@@ -198,6 +223,41 @@ export default function SlotsPage() {
       toast.error(message);
     } finally {
       setJoiningWaitlistId(null);
+    }
+  };
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= pagination.total_pages) {
+      fetchSlots(newPage, pagination.limit);
+    }
+  };
+
+  const handleLimitChange = (newLimit: number) => {
+    fetchSlots(1, newLimit);
+  };
+
+  const handleCancelBooking = async (slotId: string) => {
+    if (
+      !confirm(
+        "Are you sure you want to cancel this booking? This action cannot be undone.",
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setCancellingBookingId(slotId);
+      await bookingsAPI.cancelBooking(slotId);
+      toast.success("Booking cancelled successfully!");
+      fetchSlots(pagination.page, pagination.limit);
+    } catch (error: unknown) {
+      console.error("Error cancelling booking:", error);
+      const message =
+        (error as { response?: { data?: { message?: string } } })?.response
+          ?.data?.message || "Failed to cancel booking";
+      toast.error(message);
+    } finally {
+      setCancellingBookingId(null);
     }
   };
 
@@ -225,6 +285,21 @@ export default function SlotsPage() {
       default:
         return null;
     }
+  };
+
+  const getDisplayStatus = (slot: Slot) => {
+    if (slot.isInWaitlist) {
+      return {
+        text: "waitlist",
+        color: "bg-blue-100 text-blue-800",
+        icon: <Clock className="h-4 w-4" />,
+      };
+    }
+    return {
+      text: slot.state,
+      color: getStateColor(slot.state),
+      icon: getStateIcon(slot.state),
+    };
   };
 
   if (isLoading || !isAuthenticated) {
@@ -307,10 +382,10 @@ export default function SlotsPage() {
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <h3 className="font-semibold text-lg">{slot.resource}</h3>
-                  <Badge className={getStateColor(slot.state)}>
+                  <Badge className={getDisplayStatus(slot).color}>
                     <div className="flex items-center gap-1">
-                      {getStateIcon(slot.state)}
-                      {slot.state}
+                      {getDisplayStatus(slot).icon}
+                      {getDisplayStatus(slot).text}
                     </div>
                   </Badge>
                 </div>
@@ -359,7 +434,7 @@ export default function SlotsPage() {
                   </Button>
                 )}
 
-                {slot.state === "held" && (
+                {slot.state === "held" && slot.heldByUserId === user?.id && (
                   <div className="w-full bg-gradient-to-r from-yellow-100 to-orange-100 border-2 border-yellow-300 rounded-lg p-4 text-center">
                     <div className="flex items-center justify-center gap-2 mb-2">
                       <Lock className="h-5 w-5 text-yellow-600" />
@@ -404,16 +479,28 @@ export default function SlotsPage() {
                   </div>
                 )}
 
-                {slot.state === "booked" && (
-                  <div className="w-full bg-gradient-to-r from-red-100 to-pink-100 border-2 border-red-300 rounded-lg p-4 text-center">
+                {slot.state === "held" && slot.heldByUserId !== user?.id && (
+                  <div className="w-full bg-gradient-to-r from-yellow-100 to-orange-100 border-2 border-yellow-300 rounded-lg p-4 text-center">
                     <div className="flex items-center justify-center gap-2 mb-2">
-                      <CheckCircle className="h-5 w-5 text-red-600" />
-                      <span className="font-semibold text-red-800">
-                        Already Booked
+                      <Lock className="h-5 w-5 text-yellow-600" />
+                      <span className="font-semibold text-yellow-800">
+                        Slot Reserved by Another User
                       </span>
                     </div>
+                    {slot.heldUntil && (
+                      <div className="text-sm text-yellow-700 font-medium mb-3">
+                        {getTimeRemaining(slot.heldUntil).expired ? (
+                          <span className="text-red-600">Hold Expired</span>
+                        ) : (
+                          <div className="flex items-center justify-center gap-2">
+                            <Clock className="h-4 w-4" />
+                            <span>{getTimeRemaining(slot.heldUntil).text}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
                     {slot.canJoinWaitlist === true && (
-                      <div className="text-sm text-red-700 font-medium mb-3">
+                      <div className="text-sm text-yellow-700 font-medium mb-3">
                         <span className="flex items-center justify-center gap-2">
                           <Clock className="h-4 w-4" />
                           Join waitlist to be notified if slot becomes available
@@ -441,9 +528,148 @@ export default function SlotsPage() {
                     )}
                   </div>
                 )}
+
+                {slot.state === "booked" && (
+                  <div className="w-full bg-gradient-to-r from-red-100 to-pink-100 border-2 border-red-300 rounded-lg p-4 text-center">
+                    {slot.isInWaitlist ? (
+                      <>
+                        <div className="flex items-center justify-center gap-2 mb-2">
+                          <Clock className="h-5 w-5 text-blue-600" />
+                          <span className="font-semibold text-blue-800">
+                            You are in Waitlist
+                          </span>
+                        </div>
+                        <div className="text-sm text-blue-700 font-medium mb-3">
+                          You'll be notified if this slot becomes available
+                        </div>
+                      </>
+                    ) : slot.isBookedByUser ? (
+                      <>
+                        <div className="flex items-center justify-center gap-2 mb-2">
+                          <CheckCircle className="h-5 w-5 text-green-600" />
+                          <span className="font-semibold text-green-800">
+                            Booked by You
+                          </span>
+                        </div>
+                        <div className="text-sm text-green-700 font-medium mb-3">
+                          Your appointment is confirmed
+                        </div>
+                        <Button
+                          onClick={() => handleCancelBooking(slot.bookingId!)}
+                          disabled={cancellingBookingId === slot.bookingId}
+                          className="w-full h-12 bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 text-white font-semibold shadow-lg"
+                        >
+                          {cancellingBookingId === slot.bookingId ? (
+                            <div className="flex items-center justify-center gap-2">
+                              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                              <span>Cancelling...</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-center gap-2">
+                              <CheckCircle className="h-5 w-5" />
+                              <span>Cancel Booking</span>
+                            </div>
+                          )}
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex items-center justify-center gap-2 mb-2">
+                          <CheckCircle className="h-5 w-5 text-red-600" />
+                          <span className="font-semibold text-red-800">
+                            Already Booked
+                          </span>
+                        </div>
+                        {slot.canJoinWaitlist === true && (
+                          <div className="text-sm text-red-700 font-medium mb-3">
+                            <span className="flex items-center justify-center gap-2">
+                              <Clock className="h-4 w-4" />
+                              Join waitlist to be notified if slot becomes
+                              available
+                            </span>
+                          </div>
+                        )}
+                        {slot.canJoinWaitlist === true && (
+                          <Button
+                            onClick={() => handleJoinWaitlist(slot.id)}
+                            disabled={joiningWaitlistId === slot.id}
+                            className="w-full h-12 bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-700 hover:to-amber-700 text-white font-semibold shadow-lg"
+                          >
+                            {joiningWaitlistId === slot.id ? (
+                              <div className="flex items-center justify-center gap-2">
+                                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                <span>Joining...</span>
+                              </div>
+                            ) : (
+                              <div className="flex items-center justify-center gap-2">
+                                <Clock className="h-5 w-5" />
+                                <span>Join Waitlist</span>
+                              </div>
+                            )}
+                          </Button>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}
+        </div>
+      )}
+
+      {/* Pagination - Always show for testing */}
+      {true && ( // Changed from pagination.total_pages > 1 to always show
+        <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <span>
+              Debug: page={pagination.page}, total_pages=
+              {pagination.total_pages}, total={pagination.total}
+            </span>
+            <span>
+              Showing {(pagination.page - 1) * pagination.limit + 1} to{" "}
+              {Math.min(pagination.page * pagination.limit, pagination.total)}{" "}
+              of {pagination.total} slots
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <select
+              value={pagination.limit}
+              onChange={(e) => handleLimitChange(Number(e.target.value))}
+              className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value={5}>5 per page</option>
+              <option value={10}>10 per page</option>
+              <option value={20}>20 per page</option>
+            </select>
+
+            <div className="flex items-center gap-1">
+              <Button
+                onClick={() => handlePageChange(pagination.page - 1)}
+                disabled={pagination.page === 1}
+                variant="outline"
+                size="sm"
+                className="h-8 w-8 p-0"
+              >
+                ‹
+              </Button>
+
+              <span className="px-3 py-1 text-sm font-medium">
+                Page {pagination.page} of {pagination.total_pages}
+              </span>
+
+              <Button
+                onClick={() => handlePageChange(pagination.page + 1)}
+                disabled={pagination.page === pagination.total_pages}
+                variant="outline"
+                size="sm"
+                className="h-8 w-8 p-0"
+              >
+                ›
+              </Button>
+            </div>
+          </div>
         </div>
       )}
     </div>

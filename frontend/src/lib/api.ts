@@ -55,12 +55,22 @@ export const slotsAPI = {
     startTime: string;
     endTime: string;
   }) => api.post("/slots/create", data),
-  getAllSlots: () => api.get("/slots/all-slot-list"),
+  getAllSlots: (page?: number, limit?: number) => {
+    const params = new URLSearchParams();
+    if (page) params.append("page", page.toString());
+    if (limit) params.append("limit", limit.toString());
+    const queryString = params.toString();
+    return api.get(
+      `/slots/all-slot-list${queryString ? `?${queryString}` : ""}`,
+    );
+  },
   getDeletedSlots: () => api.get("/slots/deleted-slot-list"),
   updateSlot: (slotId: string) => api.patch(`/slots/update/${slotId}`),
   deleteSlots: (slotIds: string[]) =>
     api.delete("/slots/delete", { data: { slotIds } }),
   undoSlots: (slotIds: string[]) => api.patch("/slots/undo", { slotIds }),
+  deleteSlotsPermanent: (slotIds: string[]) =>
+    api.delete("/slots/delete-permanent", { data: { slotIds } }),
 };
 
 // Bookings API

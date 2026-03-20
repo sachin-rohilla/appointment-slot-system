@@ -8,6 +8,7 @@ import authRouter from "./routes/auth_route";
 import slotRouter from "./routes/slot_route";
 import bookingRouter from "./routes/booking_route";
 import waitListRouter from "./routes/wait_list_route";
+import { releaseHoldExpiredSlots } from "./utils/releaseExpiredSlots";
 
 dotenv.config();
 
@@ -27,4 +28,10 @@ app.use("/api/v1/bookings", bookingRouter);
 app.use("/api/v1/wait-list", waitListRouter);
 app.use(notFoundMiddleware);
 app.use(errorMiddleware);
+
+setInterval(() => {
+  console.log("Checking for expired slots...");
+  releaseHoldExpiredSlots();
+}, 3000);
+
 export default app;

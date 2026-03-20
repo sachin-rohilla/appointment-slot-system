@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import {
   createSlotService,
+  deleteSlotPermanentService,
   deleteSlotService,
   getDeleteSlotService,
   getSlotService,
@@ -33,9 +34,12 @@ export const getSlotController = async (
 ) => {
   try {
     const { userId } = (req as any).user;
-    const result = await getSlotService(userId);
+    const { page, limit } = req.query;
+    const pageNumber = Math.max(Number(page) || 1, 1);
+    const limitNumber = Math.max(Math.min(Number(limit) || 10, 10), 1);
+    const result = await getSlotService(userId, pageNumber, limitNumber);
     res.status(200).json({
-      succesS: true,
+      success: true,
       data: result,
       message: "Slots fetched successfully",
     });
@@ -100,6 +104,26 @@ export const deleteSlotController = async (
     res.status(200).json({
       success: true,
       message: "Slot deleted successfully",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteSlotPermanentController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const { slotIds } = req.body;
+    if (!Array.isArray(slotIds) || slotIds.length === 0) {
+      throw new AppError("slotIds must be a non-empty array", 400);
+    }
+    await deleteSlotPermanentService(slotIds);
+    res.status(200).json({
+      success: true,
+      message: "Slot deleted permanently successfully",
     });
   } catch (error) {
     next(error);

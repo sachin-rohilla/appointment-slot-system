@@ -1,29 +1,47 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import Link from 'next/link';
-import { useAuth } from '@/contexts/AuthContext';
-import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
-import { Badge } from '@/components/ui/badge';
-import { Calendar, User, Settings, LogOut, Menu, X, Clock, Users } from 'lucide-react';
+import { useState } from "react";
+import Link from "next/link";
+import { useAuth } from "@/contexts/AuthContext";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import { Badge } from "@/components/ui/badge";
+import NotificationDropdown from "@/components/ui/NotificationDropdown";
+import {
+  Calendar,
+  User,
+  Settings,
+  LogOut,
+  Menu,
+  X,
+  Clock,
+  Users,
+} from "lucide-react";
 
 export function Navbar() {
   const { user, logout, isAuthenticated } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const navigation = [
-    { name: 'Dashboard', href: '/dashboard', icon: Calendar },
-    { name: 'My Bookings', href: '/bookings', icon: Clock },
-    ...(user?.role === 'admin' ? [{ name: 'Manage Slots', href: '/admin/slots', icon: Users }] : []),
+    { name: "Dashboard", href: "/dashboard", icon: Calendar },
+    { name: "My Bookings", href: "/bookings", icon: Clock },
+    ...(user?.role === "admin"
+      ? [{ name: "Manage Slots", href: "/admin/slots", icon: Users }]
+      : []),
   ];
 
   const getInitials = (name: string) => {
     return name
-      .split(' ')
-      .map(word => word[0])
-      .join('')
+      .split(" ")
+      .map((word) => word[0])
+      .join("")
       .toUpperCase()
       .slice(0, 2);
   };
@@ -59,23 +77,34 @@ export function Navbar() {
                 </div>
 
                 <div className="flex items-center space-x-4">
-                  {user?.role === 'admin' && (
-                    <Badge variant="secondary" className="bg-purple-100 text-purple-800">
+                  <NotificationDropdown />
+                  {user?.role === "admin" && (
+                    <Badge
+                      variant="secondary"
+                      className="bg-purple-100 text-purple-800"
+                    >
                       Admin
                     </Badge>
                   )}
-                  
+
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                      <Button
+                        variant="ghost"
+                        className="relative h-8 w-8 rounded-full"
+                      >
                         <Avatar className="h-8 w-8">
                           <AvatarFallback className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
-                            {user?.name ? getInitials(user.name) : 'U'}
+                            {user?.name ? getInitials(user.name) : "U"}
                           </AvatarFallback>
                         </Avatar>
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent className="w-56" align="end" forceMount>
+                    <DropdownMenuContent
+                      className="w-56"
+                      align="end"
+                      forceMount
+                    >
                       <div className="flex items-center justify-start gap-2 p-2">
                         <div className="flex flex-col space-y-1 leading-none">
                           <p className="font-medium">{user?.name}</p>
@@ -86,19 +115,28 @@ export function Navbar() {
                       </div>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem asChild>
-                        <Link href="/profile" className="flex items-center space-x-2">
+                        <Link
+                          href="/profile"
+                          className="flex items-center space-x-2"
+                        >
                           <User className="h-4 w-4" />
                           <span>Profile</span>
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
-                        <Link href="/settings" className="flex items-center space-x-2">
+                        <Link
+                          href="/settings"
+                          className="flex items-center space-x-2"
+                        >
                           <Settings className="h-4 w-4" />
                           <span>Settings</span>
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={logout} className="flex items-center space-x-2 cursor-pointer">
+                      <DropdownMenuItem
+                        onClick={logout}
+                        className="flex items-center space-x-2 cursor-pointer"
+                      >
                         <LogOut className="h-4 w-4" />
                         <span>Log out</span>
                       </DropdownMenuItem>
@@ -143,13 +181,18 @@ export function Navbar() {
                 <span>{item.name}</span>
               </Link>
             ))}
-            
+
             <div className="border-t border-gray-200 pt-4 mt-4">
               <div className="px-3 py-2">
-                <p className="text-sm font-medium text-gray-900">{user?.name}</p>
+                <p className="text-sm font-medium text-gray-900">
+                  {user?.name}
+                </p>
                 <p className="text-sm text-gray-600">{user?.email}</p>
-                {user?.role === 'admin' && (
-                  <Badge variant="secondary" className="mt-2 bg-purple-100 text-purple-800">
+                {user?.role === "admin" && (
+                  <Badge
+                    variant="secondary"
+                    className="mt-2 bg-purple-100 text-purple-800"
+                  >
                     Admin
                   </Badge>
                 )}

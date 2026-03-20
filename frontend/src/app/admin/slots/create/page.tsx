@@ -64,10 +64,7 @@ export default function CreateSlotPage() {
       return false;
     }
 
-    if (new Date(startTime) <= new Date()) {
-      toast.error("Start time must be in the future");
-      return false;
-    }
+    // Removed validation for future time - allow today's slots
 
     return true;
   };

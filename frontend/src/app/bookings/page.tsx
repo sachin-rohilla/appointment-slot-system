@@ -42,7 +42,7 @@ export default function BookingsPage() {
       console.error("Error fetching bookings:", error);
       const message =
         (error as any)?.response?.data?.message || "Failed to fetch bookings";
-      setError(message);
+      toast.error(message);
       setBookings([]);
     } finally {
       setLoading(false);
@@ -271,6 +271,29 @@ export default function BookingsPage() {
                       ? "This appointment was cancelled."
                       : "This appointment has already taken place."}
                   </div>
+
+                  {/* Show cancel button for confirmed upcoming bookings */}
+                  {booking.status === "confirmed" &&
+                    isUpcoming(booking.slot.startTime) && (
+                      <Button
+                        onClick={() => handleCancelBooking(booking.id)}
+                        disabled={cancellingBookingId === booking.id}
+                        variant="outline"
+                        className="w-full mt-3 border-red-300 text-red-600 hover:bg-red-50"
+                      >
+                        {cancellingBookingId === booking.id ? (
+                          <div className="flex items-center gap-2">
+                            <div className="w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full animate-spin" />
+                            Cancelling...
+                          </div>
+                        ) : (
+                          <>
+                            <X className="h-4 w-4 mr-2" />
+                            Cancel Booking
+                          </>
+                        )}
+                      </Button>
+                    )}
                 </CardContent>
               </Card>
             ))}

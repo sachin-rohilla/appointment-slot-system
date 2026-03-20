@@ -53,7 +53,17 @@ export const createSlotService = async (payload: CreateSlotPayload) => {
   );
 };
 
-export const getSlotService = async (userId: string) => {
+export const getSlotService = async (
+  userId: string,
+  page: number,
+  limit: number,
+) => {
+  const skip = (page - 1) * limit;
+
+  const total = await prisma.slot.count({
+    where: { isDeleted: false },
+  });
+
   const slots = await prisma.slot.findMany({
     where: { isDeleted: false },
     select: {
@@ -64,12 +74,15 @@ export const getSlotService = async (userId: string) => {
       state: true,
       heldByUserId: true,
       heldUntil: true,
-      booking: { select: { userId: true } },
+      createdAt: true,
+      booking: { select: { id: true, userId: true } },
       waitlist: { select: { userId: true } },
     },
+    skip,
+    take: limit,
   });
 
-  return slots.map((slot) => ({
+  const result = slots.map((slot) => ({
     id: slot.id,
     resource: slot.resource,
     startTime: slot.startTime,
@@ -77,12 +90,27 @@ export const getSlotService = async (userId: string) => {
     state: slot.state,
     heldByUserId: slot.heldByUserId,
     heldUntil: slot.heldUntil,
+    bookingId: slot.booking?.id,
+    createdAt: slot.createdAt,
+    isBookedByUser: slot.booking?.userId === userId,
+    isInWaitlist: slot.waitlist.some((w) => w.userId === userId),
     canJoinWaitlist:
-      slot.state === "booked" &&
-      slot.booking &&
-      slot.booking.userId !== userId &&
-      !slot.waitlist.some((w) => w.userId === userId),
+      (slot.state === "held" &&
+        slot.heldByUserId !== userId &&
+        !slot.waitlist.some((w) => w.userId === userId)) ||
+      (slot.state === "booked" &&
+        slot.booking &&
+        slot.booking.userId !== userId &&
+        !slot.waitlist.some((w) => w.userId === userId)),
   }));
+
+  return {
+    result,
+    page,
+    limit,
+    total_pages: Math.ceil(total / limit),
+    total,
+  };
 };
 
 export const getDeleteSlotService = () => {
@@ -139,6 +167,32 @@ export const deleteSlotService = async (slotIds: string[]) => {
   return deletedData;
 };
 
+export const deleteSlotPermanentService = async (slotIds: string[]) => {
+  return prisma.$transaction(async (tx) => {
+    await tx.waitlist.deleteMany({
+      where: {
+        slotId: {
+          in: slotIds,
+        },
+      },
+    });
+    await tx.booking.deleteMany({
+      where: {
+        slotId: {
+          in: slotIds,
+        },
+      },
+    });
+
+    await tx.slot.deleteMany({
+      where: {
+        id: {
+          in: slotIds,
+        },
+      },
+    });
+  });
+};
 export const undoSlotService = async (slotIds: string[]) => {
   const updateData = await prisma.slot.updateMany({
     where: {

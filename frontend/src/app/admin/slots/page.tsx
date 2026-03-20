@@ -5,13 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { slotsAPI } from "@/lib/api";
 import { Slot } from "@/types";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -32,6 +26,20 @@ import {
 import Link from "next/link";
 import toast from "react-hot-toast";
 import { format } from "date-fns";
+
+const safeFormatDate = (
+  dateString: string | undefined | null,
+  formatStr: string,
+) => {
+  if (!dateString) return "N/A";
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return "Invalid Date";
+    return format(date, formatStr);
+  } catch {
+    return "Invalid Date";
+  }
+};
 
 export default function AdminSlotsPage() {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -504,20 +512,28 @@ export default function AdminSlotsPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">
-                        {format(new Date(slot.startTime), "MMM d, yyyy")}
+                        {safeFormatDate(slot.startTime, "MMM d, yyyy")}
                       </div>
                       <div className="text-sm text-gray-500">
-                        {format(new Date(slot.startTime), "h:mm a")} -{" "}
-                        {format(new Date(slot.endTime), "h:mm a")}
+                        {safeFormatDate(slot.startTime, "h:mm a")} -
+                        {safeFormatDate(slot.endTime, "h:mm a")}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">
-                        {Math.round(
-                          (new Date(slot.endTime).getTime() -
-                            new Date(slot.startTime).getTime()) /
-                            (1000 * 60),
-                        )}{" "}
+                        {(() => {
+                          try {
+                            const start = new Date(slot.startTime);
+                            const end = new Date(slot.endTime);
+                            if (isNaN(start.getTime()) || isNaN(end.getTime()))
+                              return "N/A";
+                            return Math.round(
+                              (end.getTime() - start.getTime()) / (1000 * 60),
+                            );
+                          } catch {
+                            return "N/A";
+                          }
+                        })()}{" "}
                         min
                       </div>
                     </td>
@@ -527,7 +543,7 @@ export default function AdminSlotsPage() {
                       </Badge>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {format(new Date(slot.createdAt), "MMM d, yyyy")}
+                      {safeFormatDate(slot.createdAt, "MMM d, yyyy")}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex items-center justify-end gap-2">
@@ -539,6 +555,7 @@ export default function AdminSlotsPage() {
                           size="sm"
                           onClick={() => handleDeleteSlot(slot.id)}
                           className="text-red-600 hover:text-red-700 hover:border-red-300"
+                          title="Delete (moves to recycle bin)"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
