@@ -55,10 +55,16 @@ export const slotsAPI = {
     startTime: string;
     endTime: string;
   }) => api.post("/slots/create", data),
-  getAllSlots: (page?: number, limit?: number) => {
+  getAllSlots: (
+    page?: number,
+    limit?: number,
+    filters?: { resource?: string; startDate?: string },
+  ) => {
     const params = new URLSearchParams();
     if (page) params.append("page", page.toString());
     if (limit) params.append("limit", limit.toString());
+    if (filters?.resource) params.append("resource", filters.resource);
+    if (filters?.startDate) params.append("startDate", filters.startDate);
     const queryString = params.toString();
     return api.get(
       `/slots/all-slot-list${queryString ? `?${queryString}` : ""}`,

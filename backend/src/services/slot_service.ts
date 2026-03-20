@@ -57,6 +57,7 @@ export const getSlotService = async (
   userId: string,
   page: number,
   limit: number,
+  filter?: any,
 ) => {
   const skip = (page - 1) * limit;
 
@@ -64,8 +65,25 @@ export const getSlotService = async (
     where: { isDeleted: false },
   });
 
+  const where: any = {
+    isDeleted: false,
+  };
+
+  if (filter.resourceName) {
+    where.resource = {
+      contains: filter.resourceName,
+      mode: "insensitive",
+    };
+  }
+
+  if (filter.startDate) {
+    where.startTime = {
+      gte: new Date(filter.startDate),
+    };
+  }
+
   const slots = await prisma.slot.findMany({
-    where: { isDeleted: false },
+    where,
     select: {
       id: true,
       resource: true,

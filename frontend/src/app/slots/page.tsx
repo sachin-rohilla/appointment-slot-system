@@ -1,17 +1,30 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { slotsAPI, bookingsAPI, waitlistAPI } from "@/lib/api";
+import { useRouter } from "next/navigation";
+import { slotsAPI, waitlistAPI, bookingsAPI } from "@/lib/api";
+import toast from "react-hot-toast";
+import { format } from "date-fns";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Calendar, Clock, CheckCircle, Lock } from "lucide-react";
-import toast from "react-hot-toast";
-import { format } from "date-fns";
+import {
+  Calendar,
+  Clock,
+  CheckCircle,
+  Lock,
+  AlertCircle,
+  X,
+} from "lucide-react";
 
 interface Slot {
   id: string;
@@ -42,7 +55,6 @@ export default function SlotsPage() {
   const { isAuthenticated, isLoading, user } = useAuth();
   const router = useRouter();
   const [slots, setSlots] = useState<Slot[]>([]);
-  const [filteredSlots, setFilteredSlots] = useState<Slot[]>([]);
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 10,
@@ -51,7 +63,6 @@ export default function SlotsPage() {
   });
   const [loading, setLoading] = useState(true);
   const [holdingSlotId, setHoldingSlotId] = useState<string | null>(null);
-  const [currentTime, setCurrentTime] = useState(new Date());
   const [joiningWaitlistId, setJoiningWaitlistId] = useState<string | null>(
     null,
   );
@@ -62,31 +73,34 @@ export default function SlotsPage() {
     resource: "",
     date: "",
   });
+  const [debouncedFilters, setDebouncedFilters] = useState({
+    resource: "",
+    date: "",
+  });
 
+  // Debounce filters to prevent excessive API calls
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      router.push("/login");
+    const timer = setTimeout(() => {
+      setDebouncedFilters(filters);
+    }, 300); // 300ms debounce
+
+    return () => clearTimeout(timer);
+  }, [filters]);
+
+  // Fetch slots when debounced filters or pagination changes
+  useEffect(() => {
+    if (!isLoading && isAuthenticated) {
+      const activeFilters = getActiveFilters(debouncedFilters);
+      fetchSlots(pagination.page, pagination.limit, activeFilters);
     }
-  }, [isAuthenticated, isLoading, router]);
+  }, [debouncedFilters, pagination.page, pagination.limit]);
 
+  // Initial load
   useEffect(() => {
-    if (isAuthenticated) {
+    if (!isLoading && isAuthenticated) {
       fetchSlots();
     }
-  }, [isAuthenticated]);
-
-  useEffect(() => {
-    filterSlots();
-  }, [slots, filters]);
-
-  // Update current time every second for countdown timer
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, []);
+  }, [isAuthenticated, isLoading]);
 
   const getTimeRemaining = (heldUntil: string) => {
     const now = new Date();
@@ -106,10 +120,14 @@ export default function SlotsPage() {
     };
   };
 
-  const fetchSlots = async (page = 1, limit = 10) => {
+  const fetchSlots = async (
+    page = 1,
+    limit = 10,
+    filters?: { resource?: string; startDate?: string },
+  ) => {
     try {
       setLoading(true);
-      const response = await slotsAPI.getAllSlots(page, limit);
+      const response = await slotsAPI.getAllSlots(page, limit, filters);
       // Backend returns: { success: true, data: { result, page, limit, total_pages, total }, message: "Slots fetched successfully" }
       const paginationData = response.data?.data || {};
       setSlots(paginationData.result || []);
@@ -131,30 +149,6 @@ export default function SlotsPage() {
     }
   };
 
-  const filterSlots = () => {
-    let filtered = [...slots];
-
-    if (filters.resource) {
-      filtered = filtered.filter((slot) =>
-        slot.resource.toLowerCase().includes(filters.resource.toLowerCase()),
-      );
-    }
-
-    if (filters.date) {
-      const filterDate = new Date(filters.date).toDateString();
-      filtered = filtered.filter(
-        (slot) => new Date(slot.startTime).toDateString() === filterDate,
-      );
-    }
-
-    filtered.sort(
-      (a, b) =>
-        new Date(a.startTime).getTime() - new Date(b.startTime).getTime(),
-    );
-
-    setFilteredSlots(filtered);
-  };
-
   const handleHoldSlot = async (slotId: string) => {
     setHoldingSlotId(slotId);
 
@@ -164,7 +158,8 @@ export default function SlotsPage() {
       toast.success("Slot held successfully!");
 
       // Refresh slots to show updated state
-      await fetchSlots();
+      const activeFilters = getActiveFilters(debouncedFilters);
+      await fetchSlots(pagination.page, pagination.limit, activeFilters);
     } catch (error: unknown) {
       console.error("Error holding slot:", error);
       const errorMessage =
@@ -214,7 +209,8 @@ export default function SlotsPage() {
       setJoiningWaitlistId(slotId);
       await waitlistAPI.joinWaitlist(slotId);
       toast.success("Joined waitlist successfully!");
-      fetchSlots(pagination.page, pagination.limit);
+      const filters = getActiveFilters();
+      fetchSlots(pagination.page, pagination.limit, filters);
     } catch (error: unknown) {
       console.error("Error joining waitlist:", error);
       const message =
@@ -228,13 +224,56 @@ export default function SlotsPage() {
 
   const handlePageChange = (newPage: number) => {
     if (newPage >= 1 && newPage <= pagination.total_pages) {
-      fetchSlots(newPage, pagination.limit);
+      const activeFilters = getActiveFilters(debouncedFilters);
+      fetchSlots(newPage, pagination.limit, activeFilters);
     }
   };
 
   const handleLimitChange = (newLimit: number) => {
-    fetchSlots(1, newLimit);
+    const activeFilters = getActiveFilters(debouncedFilters);
+    fetchSlots(1, newLimit, activeFilters);
   };
+
+  const getActiveFilters = useCallback((currentFilters: typeof filters) => {
+    const activeFilters: { resource?: string; startDate?: string } = {};
+    if (currentFilters.resource?.trim()) {
+      activeFilters.resource = currentFilters.resource.trim();
+    }
+    if (currentFilters.date) {
+      activeFilters.startDate = currentFilters.date;
+    }
+    return activeFilters;
+  }, []);
+
+  const hasActiveFilters = useMemo(() => {
+    return !!(filters.resource?.trim() || filters.date);
+  }, [filters]);
+
+  const handleFilterChange = useCallback(() => {
+    // Reset to page 1 when filters change
+    setPagination((prev) => ({ ...prev, page: 1 }));
+  }, []);
+
+  const handleClearFilters = useCallback(() => {
+    setFilters({ resource: "", date: "" });
+    setPagination((prev) => ({ ...prev, page: 1 }));
+  }, []);
+
+  const handleResourceChange = useCallback(
+    (value: string) => {
+      setFilters((prev) => ({ ...prev, resource: value }));
+      handleFilterChange();
+    },
+    [handleFilterChange],
+  );
+
+  const handleDateChange = useCallback(
+    (value: string) => {
+      setFilters((prev) => ({ ...prev, date: value }));
+      handleFilterChange();
+    },
+    [handleFilterChange],
+  );
 
   const handleCancelBooking = async (slotId: string) => {
     if (
@@ -249,7 +288,8 @@ export default function SlotsPage() {
       setCancellingBookingId(slotId);
       await bookingsAPI.cancelBooking(slotId);
       toast.success("Booking cancelled successfully!");
-      fetchSlots(pagination.page, pagination.limit);
+      const filters = getActiveFilters();
+      fetchSlots(pagination.page, pagination.limit, filters);
     } catch (error: unknown) {
       console.error("Error cancelling booking:", error);
       const message =
@@ -322,10 +362,23 @@ export default function SlotsPage() {
       {/* Filters */}
       <Card className="mb-8">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5" />
-            Filter Slots
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5" />
+              Filter Slots
+            </CardTitle>
+            {hasActiveFilters && (
+              <Button
+                onClick={handleClearFilters}
+                variant="outline"
+                size="sm"
+                className="text-gray-600 hover:text-gray-800"
+              >
+                <X className="h-4 w-4 mr-1" />
+                Clear Filters
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -336,10 +389,14 @@ export default function SlotsPage() {
                 type="text"
                 placeholder="Search by resource name..."
                 value={filters.resource}
-                onChange={(e) =>
-                  setFilters((prev) => ({ ...prev, resource: e.target.value }))
-                }
+                onChange={(e) => handleResourceChange(e.target.value)}
+                className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
               />
+              {filters.resource && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Searching: "{filters.resource}"
+                </p>
+              )}
             </div>
             <div>
               <Label htmlFor="date-filter">Date</Label>
@@ -347,12 +404,29 @@ export default function SlotsPage() {
                 id="date-filter"
                 type="date"
                 value={filters.date}
-                onChange={(e) =>
-                  setFilters((prev) => ({ ...prev, date: e.target.value }))
-                }
+                onChange={(e) => handleDateChange(e.target.value)}
+                className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
               />
+              {filters.date && (
+                <p className="text-xs text-gray-500 mt-1">
+                  From: {format(new Date(filters.date), "MMM d, yyyy")}
+                </p>
+              )}
             </div>
           </div>
+          {hasActiveFilters && (
+            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-center gap-2 text-sm text-blue-800">
+                <Calendar className="h-4 w-4" />
+                <span>
+                  {filters.resource && `Resource: "${filters.resource}"`}
+                  {filters.resource && filters.date && " • "}
+                  {filters.date &&
+                    `From: ${format(new Date(filters.date), "MMM d, yyyy")}`}
+                </span>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -361,7 +435,7 @@ export default function SlotsPage() {
         <div className="flex items-center justify-center py-12">
           <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
         </div>
-      ) : filteredSlots.length === 0 ? (
+      ) : slots.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
             <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
@@ -377,7 +451,7 @@ export default function SlotsPage() {
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredSlots.map((slot) => (
+          {slots.map((slot) => (
             <Card key={slot.id} className="hover:shadow-lg transition-shadow">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">

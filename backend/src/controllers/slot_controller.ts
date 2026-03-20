@@ -34,10 +34,20 @@ export const getSlotController = async (
 ) => {
   try {
     const { userId } = (req as any).user;
-    const { page, limit } = req.query;
+    const { page, limit, resource, startDate } = req.query;
     const pageNumber = Math.max(Number(page) || 1, 1);
     const limitNumber = Math.max(Math.min(Number(limit) || 10, 10), 1);
-    const result = await getSlotService(userId, pageNumber, limitNumber);
+    const resourceName = resource?.toString().trim() || "";
+    const startDateStr = startDate?.toString().trim() || "";
+    const filter: any = {};
+    filter.resourceName = resourceName;
+    filter.startDate = startDateStr;
+    const result = await getSlotService(
+      userId,
+      pageNumber,
+      limitNumber,
+      filter,
+    );
     res.status(200).json({
       success: true,
       data: result,
