@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
-import { slotsAPI, bookingsAPI } from "@/lib/api";
+import { slotsAPI, bookingsAPI, waitlistAPI } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -19,9 +19,10 @@ interface Slot {
   startTime: string;
   endTime: string;
   state: "available" | "held" | "booked";
+  isDeleted: boolean;
   heldByUserId?: string;
   heldUntil?: string;
-  isDeleted?: boolean;
+  canJoinWaitlist?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -34,6 +35,9 @@ export default function SlotsPage() {
   const [loading, setLoading] = useState(true);
   const [holdingSlotId, setHoldingSlotId] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [joiningWaitlistId, setJoiningWaitlistId] = useState<string | null>(
+    null,
+  );
   const [filters, setFilters] = useState({
     resource: "",
     date: "",
@@ -169,6 +173,31 @@ export default function SlotsPage() {
       toast.error(message);
     } finally {
       setHoldingSlotId(null);
+    }
+  };
+
+  const handleJoinWaitlist = async (slotId: string) => {
+    if (
+      !confirm(
+        "Do you want to join the waitlist? You'll be notified if this slot becomes available.",
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setJoiningWaitlistId(slotId);
+      await waitlistAPI.joinWaitlist(slotId);
+      toast.success("Joined waitlist successfully!");
+      fetchSlots(); // Refresh slots
+    } catch (error: unknown) {
+      console.error("Error joining waitlist:", error);
+      const message =
+        (error as { response?: { data?: { message?: string } } })?.response
+          ?.data?.message || "Failed to join waitlist";
+      toast.error(message);
+    } finally {
+      setJoiningWaitlistId(null);
     }
   };
 
@@ -376,9 +405,40 @@ export default function SlotsPage() {
                 )}
 
                 {slot.state === "booked" && (
-                  <div className="w-full flex items-center justify-center gap-2 text-sm text-red-600 bg-red-50 py-3 rounded-lg">
-                    <CheckCircle className="h-4 w-4" />
-                    <span>Already Booked</span>
+                  <div className="w-full bg-gradient-to-r from-red-100 to-pink-100 border-2 border-red-300 rounded-lg p-4 text-center">
+                    <div className="flex items-center justify-center gap-2 mb-2">
+                      <CheckCircle className="h-5 w-5 text-red-600" />
+                      <span className="font-semibold text-red-800">
+                        Already Booked
+                      </span>
+                    </div>
+                    {slot.canJoinWaitlist === true && (
+                      <div className="text-sm text-red-700 font-medium mb-3">
+                        <span className="flex items-center justify-center gap-2">
+                          <Clock className="h-4 w-4" />
+                          Join waitlist to be notified if slot becomes available
+                        </span>
+                      </div>
+                    )}
+                    {slot.canJoinWaitlist === true && (
+                      <Button
+                        onClick={() => handleJoinWaitlist(slot.id)}
+                        disabled={joiningWaitlistId === slot.id}
+                        className="w-full h-12 bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-700 hover:to-amber-700 text-white font-semibold shadow-lg"
+                      >
+                        {joiningWaitlistId === slot.id ? (
+                          <div className="flex items-center justify-center gap-2">
+                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                            <span>Joining...</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-center gap-2">
+                            <Clock className="h-5 w-5" />
+                            <span>Join Waitlist</span>
+                          </div>
+                        )}
+                      </Button>
+                    )}
                   </div>
                 )}
               </CardContent>

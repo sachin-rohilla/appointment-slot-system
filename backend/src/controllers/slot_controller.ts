@@ -32,7 +32,8 @@ export const getSlotController = async (
   next: NextFunction,
 ) => {
   try {
-    const result = await getSlotService();
+    const { userId } = (req as any).user;
+    const result = await getSlotService(userId);
     res.status(200).json({
       succesS: true,
       data: result,

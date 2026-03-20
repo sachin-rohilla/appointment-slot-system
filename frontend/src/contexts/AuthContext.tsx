@@ -13,6 +13,7 @@ interface AuthContextType {
     name: string,
     email: string,
     password: string,
+    confirmPassword: string,
     role?: string,
   ) => Promise<void>;
   logout: () => void;
@@ -76,10 +77,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     name: string,
     email: string,
     password: string,
+    confirmPassword: string,
     role?: string,
   ) => {
     try {
-      const response = await authAPI.signUp({ name, email, password, role });
+      const response = await authAPI.signUp({
+        name,
+        email,
+        password,
+        confirmPassword,
+        role,
+      });
       const { user: userData, token } = response.data.data;
 
       localStorage.setItem("token", token);

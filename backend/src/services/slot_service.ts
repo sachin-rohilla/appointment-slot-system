@@ -53,12 +53,36 @@ export const createSlotService = async (payload: CreateSlotPayload) => {
   );
 };
 
-export const getSlotService = () => {
-  return prisma.slot.findMany({
-    where: {
-      isDeleted: false,
+export const getSlotService = async (userId: string) => {
+  const slots = await prisma.slot.findMany({
+    where: { isDeleted: false },
+    select: {
+      id: true,
+      resource: true,
+      startTime: true,
+      endTime: true,
+      state: true,
+      heldByUserId: true,
+      heldUntil: true,
+      booking: { select: { userId: true } },
+      waitlist: { select: { userId: true } },
     },
   });
+
+  return slots.map((slot) => ({
+    id: slot.id,
+    resource: slot.resource,
+    startTime: slot.startTime,
+    endTime: slot.endTime,
+    state: slot.state,
+    heldByUserId: slot.heldByUserId,
+    heldUntil: slot.heldUntil,
+    canJoinWaitlist:
+      slot.state === "booked" &&
+      slot.booking &&
+      slot.booking.userId !== userId &&
+      !slot.waitlist.some((w) => w.userId === userId),
+  }));
 };
 
 export const getDeleteSlotService = () => {

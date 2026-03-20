@@ -1,65 +1,77 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { useAuth } from '@/contexts/AuthContext';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Eye, EyeOff, Calendar, Clock, User } from 'lucide-react';
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { useAuth } from "@/contexts/AuthContext";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Eye, EyeOff, Calendar, Clock, User } from "lucide-react";
 
 export default function RegisterPage() {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [role, setRole] = useState<'user' | 'admin'>('user');
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [role, setRole] = useState<"user" | "admin">("user");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
-  
+
   const { register } = useAuth();
   const router = useRouter();
 
   const validateForm = () => {
     const newErrors: string[] = [];
-    
+
     if (name.length < 2) {
-      newErrors.push('Name must be at least 2 characters');
+      newErrors.push("Name must be at least 2 characters");
     }
-    
-    if (!email.includes('@')) {
-      newErrors.push('Please enter a valid email');
+
+    if (!email.includes("@")) {
+      newErrors.push("Please enter a valid email");
     }
-    
+
     if (password.length < 6) {
-      newErrors.push('Password must be at least 6 characters');
+      newErrors.push("Password must be at least 6 characters");
     }
-    
+
     if (password !== confirmPassword) {
-      newErrors.push('Passwords do not match');
+      newErrors.push("Passwords do not match");
     }
-    
+
     setErrors(newErrors);
     return newErrors.length === 0;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
-    
+
     setIsLoading(true);
 
     try {
-      await register(name, email, password, role);
-      router.push('/dashboard');
+      await register(name, email, password, confirmPassword, role);
+      router.push("/dashboard");
     } catch {
       // Error is handled in AuthContext
     } finally {
@@ -76,13 +88,17 @@ export default function RegisterPage() {
               <User className="h-8 w-8 text-white" />
             </div>
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Create Account</h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            Create Account
+          </h1>
           <p className="text-gray-600">Join us to manage your appointments</p>
         </div>
 
         <Card className="shadow-xl border-0">
           <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl font-semibold text-center">Sign Up</CardTitle>
+            <CardTitle className="text-2xl font-semibold text-center">
+              Sign Up
+            </CardTitle>
             <CardDescription className="text-center">
               Fill in your details to create your account
             </CardDescription>
@@ -97,7 +113,7 @@ export default function RegisterPage() {
                 ))}
               </div>
             )}
-            
+
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Full Name</Label>
@@ -111,7 +127,7 @@ export default function RegisterPage() {
                   className="h-11"
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <Input
@@ -124,26 +140,31 @@ export default function RegisterPage() {
                   className="h-11"
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="role">Account Type</Label>
-                <Select value={role} onValueChange={(value: 'user' | 'admin') => setRole(value)}>
+                <Select
+                  value={role}
+                  onValueChange={(value: "user" | "admin") => setRole(value)}
+                >
                   <SelectTrigger className="h-11">
                     <SelectValue placeholder="Select account type" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="user">User - Book appointments</SelectItem>
+                    <SelectItem value="user">
+                      User - Book appointments
+                    </SelectItem>
                     <SelectItem value="admin">Admin - Manage slots</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
                 <div className="relative">
                   <Input
                     id="password"
-                    type={showPassword ? 'text' : 'password'}
+                    type={showPassword ? "text" : "password"}
                     placeholder="Create a password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -165,13 +186,13 @@ export default function RegisterPage() {
                   </Button>
                 </div>
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="confirmPassword">Confirm Password</Label>
                 <div className="relative">
                   <Input
                     id="confirmPassword"
-                    type={showConfirmPassword ? 'text' : 'password'}
+                    type={showConfirmPassword ? "text" : "password"}
                     placeholder="Confirm your password"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
@@ -205,14 +226,14 @@ export default function RegisterPage() {
                     Creating account...
                   </div>
                 ) : (
-                  'Create Account'
+                  "Create Account"
                 )}
               </Button>
             </form>
 
             <div className="mt-6 text-center">
               <p className="text-sm text-gray-600">
-                Already have an account?{' '}
+                Already have an account?{" "}
                 <Link
                   href="/auth/login"
                   className="font-medium text-purple-600 hover:text-purple-500 transition-colors"

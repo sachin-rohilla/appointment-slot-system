@@ -70,3 +70,8 @@ export const bookingsAPI = {
   cancelBooking: (bookingId: string) =>
     api.patch(`/bookings/cancel-booking/${bookingId}`),
 };
+
+// Waitlist API
+export const waitlistAPI = {
+  joinWaitlist: (slotId: string) => api.post("/wait-list/create", { slotId }),
+};
